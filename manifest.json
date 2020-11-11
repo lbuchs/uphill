@@ -7,12 +7,12 @@
     "background_color": "#231f20",
     "theme_color": "#231f20",
     "icons": [{
-            "src": "resources/img/logo.png",
+            "src": "https://member.pdcs.ch/logo/pdcs512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
         }, {
-            "src": "resources/img/logo192.png",
+            "src": "https://member.pdcs.ch/logo/pdcs192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"

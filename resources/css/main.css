@@ -1,11 +1,52 @@
 /*
-Copyright © 2020 Lukas Buchs, netas.ch
-*/
-/*
-    Created on : 11.11.2020, 18:14:45
-    Author     : Lukas Buchs
+Copyright © 2020 Lukas Buchs
 */
 * {
   margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  border-collapse: collapse;
+}
+body {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  align-content: stretch;
+}
+body header {
+  height: 20px;
+  background-color: #e8e8e8;
+  background-image: url("../img/logo.svg");
+  background-size: 110px;
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  font-size: 1.1em;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 20px;
+}
+body main {
+  flex: 1;
+  padding: 20px;
+  overflow: scroll;
+  display: flex;
+
+  > div {
+      flex: 1;
+      width: 100%;
+      min-height: 100%;
+  }
+}
+body footer {
+  height: 20px;
+  background-color: #e8e8e8;
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 20px;
+  text-align: center;
 }
 /*# sourceMappingURL=main.css.map */
