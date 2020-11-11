@@ -1,0 +1,21 @@
+{
+    "name": "Möntschele Uphill",
+    "short_name": "Möntschele Uphill",
+    "description": "Möntschele Uphill",
+    "start_url": "./?source=pwa",
+    "display": "browser",
+    "background_color": "#231f20",
+    "theme_color": "#231f20",
+    "icons": [{
+            "src": "resources/img/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }, {
+            "src": "resources/img/logo192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
