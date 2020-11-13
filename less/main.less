@@ -5,12 +5,67 @@ Copyright © 2020 Lukas Buchs
 @resourcePath: '..';
 
 
+@font-face {
+    font-family: Roboto;
+    src: url(../font/Roboto-Regular.ttf);
+    font-weight: normal;
+}
+@font-face {
+    font-family: Roboto;
+    src: url(../font/Roboto-Bold.ttf);
+    font-weight: bold;
+}
+@font-face {
+    font-family: Roboto;
+    src: url(../font/Roboto-BoldItalic.ttf);
+    font-weight: bold;
+    font-style: italic;
+}
+@font-face {
+    font-family: Roboto;
+    src: url(../font/Roboto-Italic.ttf);
+    font-weight: normal;
+    font-style: italic;
+}
+@font-face {
+    font-family: RobotoMedium;
+    src: url(../font/Roboto-Medium.ttf);
+    font-weight: normal;
+}
+@font-face {
+    font-family: RobotoLight;
+    src: url(../font/Roboto-Light.ttf);
+    font-weight: normal;
+}
+@font-face {
+    font-family: RobotoLight;
+    src: url(../font/Roboto-LightItalic.ttf);
+    font-weight: normal;
+    font-style: italic;
+}
+
+
 * {
     margin: 0;
     padding: 0;
-    font-family: Arial,sans-serif;
+    font-family: Roboto,Arial,sans-serif;
+    font-size: 1.05rem;
     border-collapse: collapse;
 }
+
+h1, h2, h3 {
+    font-family: RobotoLight;
+    font-weight: normal;
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+}
+h2, h3 {
+    font-size: 1.4rem;
+}
+button {
+    font-family: RobotoMedium;
+}
+
 
 body {
     position: absolute;
@@ -34,14 +89,17 @@ body {
         padding: 20px;
     }
 
-    main {
+    div.timer {
         flex: 1;
+    }
+
+    main {
+        flex: 5;
         padding: 20px;
         overflow: auto;
         display: flex;
 
         > div {
-            width: 100%;
             min-height: 100%;
             display: flex;
             justify-content: center;
@@ -59,6 +117,105 @@ body {
             }
 
 
+            form {
+
+
+                ol {
+                    padding-left: 30px;
+                    > li {
+                        padding-bottom: 6px;
+                    }
+                }
+
+                > div.formEl {
+                  margin: 10px 0 17px 0;
+
+                    &.textEl {
+                        display: flex;
+
+                        > label {
+                            flex: 1;
+                            line-height: 28px;
+                            font-size: 0.9em;
+                        }
+
+                        > input {
+                            flex: 3;
+                            border: 0;
+                            border-left: 1px solid grey;
+                            border-bottom: 1px solid grey;
+                            line-height: 20px;
+                            font-size: 0.9em;
+                            padding: 4px;
+                        }
+                    }
+
+                    &.radioEl p {
+                        font-weight: bold;
+                    }
+
+                    &.radioEl input {
+                        margin: 8px 5px;
+                    }
+
+                    &.submitEl input {
+                        font-family: RobotoMedium;
+                        text-transform: uppercase;
+                        padding: 10px;
+                        background-color: #2ecc71;
+                        color: #ecf0f1;
+                        border: 0;
+                        border-radius: 4px;
+                        box-shadow: 1px 1px 2px 1px rgba(91,91,91,0.28);
+                    }
+                }
+
+
+            }
+
+
+            div.slider {
+                position: relative;
+                margin: 8px 0 30px 0;
+                padding: 3px;
+                border: 1px solid white;
+                box-shadow: 1px 1px 2px 1px rgba(91,91,91,0.28);
+                border-radius: 4px;
+                overflow: hidden;
+                height: 26px;
+                transition: height 1s;
+
+                h2 {
+                    margin: 0px 0 7px 3px;
+                }
+
+                &:hover {
+                    height: 460px;
+                }
+
+                .plusSign {
+                    background-color: #c4c4c4;
+                    color: #ecf0f1;
+                    width: 20px;
+                    height: 20px;
+                    position: absolute;
+                    border-radius: 50%;
+                    top: 5px;
+                    right: 5px;
+                    text-align: center;
+                    line-height: 20px;
+                }
+            }
+
+            div.ready {
+
+                text-align: center;
+                h1 {
+                    margin-bottom: 20px;
+                }
+
+
+            }
         }
     }
 

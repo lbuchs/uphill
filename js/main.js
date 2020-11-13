@@ -6,7 +6,9 @@ class main {
 
     constructor() {
         this._mainDiv = document.querySelector("main > div");
+        this._timerDiv = document.querySelector("div.timer");
         this._scannedCode = this._getGetParam('cd');
+//        this._timerDiv.style.display = '';
 
         this._setContent();
     }
@@ -76,11 +78,14 @@ class main {
     }
 
     _showForm(data) {
-        let formDiv = document.createElement('form'), html='';
+        let formEl = document.createElement('form'), html='';
 
         html += '<h1>Willkommen bei der Möntschele Uphill Challange!</h1>';
         html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stopuhr, um zu sehen, wie lange du für die 676 Höhenmeter benötigst.</p>';
-        html += '<h2>So gehts:</h2>';
+
+        html += '<div class="slider">';
+        html += '<h2>So gehts</h2>';
+        html += '<div class="plusSign">+</div>';
         html += '<ol>';
         html += '<li>Fülle das Formular aus oder drücke «Bereitmachen» für eine anonyme Teilnahme.</li>';
         html += '<li>Wenn du laufbereit bist, scanne den Start-QR-Code, öffne den Link und laufe los.</li>';
@@ -89,34 +94,74 @@ class main {
         html += '<li>Oben beim Startplatz ist das Ziel. Scanne den QR-Code, um die Zeitmessung abzuschliessen.</li>';
         html += '<li>Guten Flug!</li>';
         html += '</ol>';
-
-        html += '<div class="formEl textEl">';
-        html += '<label>Name<input type="text" name="name" placeholder="Anonymer Speedygonzales"></label>';
         html += '</div>';
 
         html += '<div class="formEl textEl">';
-        html += '<label>Email<input type="email" name="email" placeholder="anonymous@pdcs.ch"></label>';
+        html += '<label for="fld_name">Name</label><input type="text" name="name" placeholder="Anonymer Speedygonzales" id="fld_name" value="' + data.name + '">';
+        html += '</div>';
+
+        html += '<div class="formEl textEl">';
+        html += '<label for="fld_email">Email</label><input type="email" name="email" placeholder="anonymous@pdcs.ch" id="fld_email" value="' + data.email + '">';
         html += '</div>';
 
         html += '<div class="formEl radioEl">';
         html += '<p>Geschlecht</p>';
-        html += '<label><input type="radio" name="gender" value="W">Sie</label><br>';
-        html += '<label><input type="radio" name="gender" value="M">Er</label>';
+        html += '<label><input type="radio" name="gender" value="W" required ' + (data.gender==='W' ? 'checked' : '') + '>Sie</label><br>';
+        html += '<label><input type="radio" name="gender" value="M" required ' + (data.gender==='M' ? 'checked' : '') + '>Er</label>';
         html += '</div>';
 
         html += '<div class="formEl radioEl">';
-        html += '<p>Kategorie</p>';
-        html += '<label><input type="radio" name="category" value="1" required>Fussgänger</label><br>';
-        html += '<label><input type="radio" name="category" value="2" required>Leichtausrüstung</label><br>';
-        html += '<label><input type="radio" name="category" value="2" required>Sherpa (> 6kg)</label>';
+        html += '<p>Ausrüstung</p>';
+        html += '<label><input type="radio" name="category" value="1" required ' + (data.category===1 ? 'checked' : '') + '>Ohne Gleitschirm</label><br>';
+        html += '<label><input type="radio" name="category" value="2" required ' + (data.category===2 ? 'checked' : '') + '>Leichtausrüstung</label><br>';
+        html += '<label><input type="radio" name="category" value="3" required ' + (data.category===3 ? 'checked' : '') + '>Sherpa (> 6kg)</label>';
         html += '</div>';
 
         html += '<div class="formEl submitEl">';
         html += '<input type="submit" value="Bereitmachen!">';
         html += '</div>';
 
-        formDiv.innerHTML = html;
-        this._mainDiv.appendChild(formDiv);
+        formEl.innerHTML = html;
+        this._mainDiv.appendChild(formEl);
+
+        formEl.addEventListener('submit', this._onFormSubmit.bind(this));
+
+    }
+
+
+    _onFormSubmit(e) {
+        e.preventDefault();
+        let formData = new FormData(e.target), formPacket={};
+
+        for (var [key, value] of formData.entries()) {
+            formPacket[key] = value.toString().trim();
+            if (key === 'category') {
+                formPacket[key] = parseInt(formPacket[key]);
+            }
+        }
+
+        if (!formPacket.email) {
+            if (!window.confirm('Möchtest du wirklich anonym Teilnehmen? Wenn du eine Email-Adresse angibtst, kannst du deine Bestzeit vergleichen.')) {
+                return;
+            }
+        }
+
+        this._queryApi('saveForm', {formPacket: formPacket}).then((r) => {
+            this._showReadyScreen();
+        });
+    }
+
+    _showReadyScreen() {
+        this._clearElement(this._mainDiv);
+
+        let readyDiv = document.createElement('div'), html='';
+        readyDiv.className = 'ready';
+
+        html += '<h1>Ready!</h1>';
+        html += '<p>Scanne den QR-Code, um die Zeitmessung zu starten.</p>';
+
+        readyDiv.innerHTML = html;
+        this._mainDiv.appendChild(readyDiv);
     }
 };
 
