@@ -8,9 +8,18 @@ class main {
         this._mainDiv = document.querySelector("main > div");
         this._timerDiv = document.querySelector("div.timer");
         this._scannedCode = this._getGetParam('cd');
-//        this._timerDiv.style.display = '';
+        this._startTime = null;
+        this._finishTime = null;
+
+        this._clockElements = {
+            hour: document.querySelector("body div.timer > span.hour"),
+            minute: document.querySelector("body div.timer > span.minute"),
+            second: document.querySelector("body div.timer > span.second")
+        };
 
         this._setContent();
+        this._updateTimer();
+
     }
 
 
@@ -24,6 +33,33 @@ class main {
 
             if (commands.action === 'showForm') {
                 this._showForm(commands.data);
+            }
+
+            if (commands.action === 'showTime') {
+                this._showTime(commands.html);
+            }
+
+            if (commands.data && commands.data.startTime !== undefined) {
+                if (commands.data.startTime === null) {
+                    this._startTime = null;
+                } else {
+                    this._startTime = new Date(commands.data.startTime * 1000);
+                }
+            }
+
+            if (commands.data && commands.data.finishTime !== undefined) {
+                if (commands.data.finishTime === null) {
+                    this._finishTime = null;
+                } else {
+                    this._finishTime = new Date(commands.data.finishTime * 1000);
+                }
+            }
+
+            if (commands.currentTime) {
+                let diff = Date.now() - commands.currentTime;
+                if (diff > (30*1000)) {
+                    window.alert('Deine Handy-Zeit weicht ' + Math.round(diff/1000) + ' Sekunden von der aktuellen Zeit ab. Die Anzeige kann ungenau sein.');
+                }
             }
 
         } catch (e) {
@@ -77,8 +113,43 @@ class main {
         this._mainDiv.appendChild(el);
     }
 
+    _updateTimer() {
+        let hours=0, minutes=0, seconds=0, milliseconds=0;
+        if (this._startTime instanceof Date) {
+            if (this._finishTime === null) {
+                milliseconds = Date.now() - this._startTime.getTime();
+
+            } else {
+                milliseconds = this._finishTime.getTime() - this._startTime.getTime();
+            }
+
+            hours = Math.floor(milliseconds / 1000 / 3600);
+            milliseconds -= hours * 1000 * 3600;
+
+            minutes = Math.floor(milliseconds / 1000 / 60);
+            milliseconds -= minutes * 1000 * 60;
+
+            seconds = Math.floor(milliseconds / 1000);
+            milliseconds -= seconds * 1000;
+        }
+
+        this._clearElement(this._clockElements.hour);
+        this._clearElement(this._clockElements.minute);
+        this._clearElement(this._clockElements.second);
+
+        this._clockElements.hour.appendChild(document.createTextNode(this._strPad(hours, 2, '0')));
+        this._clockElements.minute.appendChild(document.createTextNode(this._strPad(minutes, 2, '0')));
+        this._clockElements.second.appendChild(document.createTextNode(this._strPad(seconds, 2, '0')));
+
+        // jede sekunde neu zeichnen
+        window.setTimeout(() => { window.requestAnimationFrame(() => {this._updateTimer(); }); }, 1000 - milliseconds);
+    }
+
     _showForm(data) {
         let formEl = document.createElement('form'), html='';
+
+        let name = data.name ? data.name : '';
+        let email = data.email ? data.email : '';
 
         html += '<h1>Willkommen bei der Möntschele Uphill Challange!</h1>';
         html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stopuhr, um zu sehen, wie lange du für die 676 Höhenmeter benötigst.</p>';
@@ -87,7 +158,7 @@ class main {
         html += '<h2>So gehts</h2>';
         html += '<div class="plusSign">+</div>';
         html += '<ol>';
-        html += '<li>Fülle das Formular aus oder drücke «Bereitmachen» für eine anonyme Teilnahme.</li>';
+        html += '<li>Fülle das Formular aus und drücke «Bereitmachen».</li>';
         html += '<li>Wenn du laufbereit bist, scanne den Start-QR-Code, öffne den Link und laufe los.</li>';
         html += '<li>Nach der Spittelweide, nach dem Tor im Zaun, ist die erste Zwischenzeit. Scanne den QR-Code, öffne den Link und laufe weiter.</li>';
         html += '<li>Beim Bänkli im Möntschelewald ist die zweite Zwischenzeit. Scanne den QR-Code, öffne den Link und laufe weiter.</li>';
@@ -97,11 +168,11 @@ class main {
         html += '</div>';
 
         html += '<div class="formEl textEl">';
-        html += '<label for="fld_name">Name</label><input type="text" name="name" placeholder="Anonymer Speedygonzales" id="fld_name" value="' + data.name + '">';
+        html += '<label for="fld_name">Name</label><input type="text" name="name" placeholder="Vorname Nachname" id="fld_name" value="' + name + '" required>';
         html += '</div>';
 
         html += '<div class="formEl textEl">';
-        html += '<label for="fld_email">Email</label><input type="email" name="email" placeholder="anonymous@pdcs.ch" id="fld_email" value="' + data.email + '">';
+        html += '<label for="fld_email">Email</label><input type="email" name="email" placeholder="" id="fld_email" value="' + email + '" required>';
         html += '</div>';
 
         html += '<div class="formEl radioEl">';
@@ -114,7 +185,7 @@ class main {
         html += '<p>Ausrüstung</p>';
         html += '<label><input type="radio" name="category" value="1" required ' + (data.category===1 ? 'checked' : '') + '>Ohne Gleitschirm</label><br>';
         html += '<label><input type="radio" name="category" value="2" required ' + (data.category===2 ? 'checked' : '') + '>Leichtausrüstung</label><br>';
-        html += '<label><input type="radio" name="category" value="3" required ' + (data.category===3 ? 'checked' : '') + '>Sherpa (> 6kg)</label>';
+        html += '<label><input type="radio" name="category" value="3" required ' + (data.category===3 ? 'checked' : '') + '>Sherpa (> 8kg)</label>';
         html += '</div>';
 
         html += '<div class="formEl submitEl">';
@@ -125,7 +196,13 @@ class main {
         this._mainDiv.appendChild(formEl);
 
         formEl.addEventListener('submit', this._onFormSubmit.bind(this));
+    }
 
+    _showTime(html) {
+        let timeEl = document.createElement('div');
+        timeEl.className = 'times';
+        timeEl.innerHTML = html;
+        this._mainDiv.appendChild(timeEl);
     }
 
 
@@ -137,12 +214,6 @@ class main {
             formPacket[key] = value.toString().trim();
             if (key === 'category') {
                 formPacket[key] = parseInt(formPacket[key]);
-            }
-        }
-
-        if (!formPacket.email) {
-            if (!window.confirm('Möchtest du wirklich anonym Teilnehmen? Wenn du eine Email-Adresse angibtst, kannst du deine Bestzeit vergleichen.')) {
-                return;
             }
         }
 
@@ -162,6 +233,22 @@ class main {
 
         readyDiv.innerHTML = html;
         this._mainDiv.appendChild(readyDiv);
+    }
+
+    _strPad(input, pad_length, pad_string, pad_type='left') {
+        input = input.toString();
+        while (input.length < pad_length && pad_string.toString().length > 0) {
+            if (pad_type === 'left') {
+                input = pad_string.toString() + input;
+
+            } else if (pad_type === 'right') {
+                input += pad_string.toString();
+            } else {
+                throw new Error('invalid pad_type');
+            }
+        }
+
+        return input;
     }
 };
 

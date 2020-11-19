@@ -44,7 +44,7 @@ class Main {
             switch ($this->_request->action()) {
                 case 'getContent': $uphill->getContent(); break;
                 case 'saveForm': $uphill->saveForm(); break;
-                default: throw new Exception('unknown action');
+                default: throw new \Exception('unknown action');
             }
 
 
