@@ -45,6 +45,7 @@ Copyright © 2020 Lukas Buchs
   font-family: Roboto, Arial, sans-serif;
   font-size: 1.05rem;
   border-collapse: collapse;
+  color: #191919;
 }
 h1,
 h2,
@@ -84,12 +85,27 @@ body header {
 }
 body div.timer {
   flex: 1;
+  min-height: 50px;
+  border-top: 1px solid #f3f3f3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  background-color: #fcfcfc;
+}
+body div.timer > span {
+  font-size: 46px;
+  font-family: RobotoLight;
+  width: 55px;
+  text-align: center;
+}
+body div.timer > span.separator {
+  width: 10px;
 }
 body main {
   flex: 5;
   padding: 20px;
   overflow: auto;
-  display: flex;
 }
 body main > div {
   min-height: 100%;
@@ -184,6 +200,52 @@ body main > div div.ready {
 }
 body main > div div.ready h1 {
   margin-bottom: 20px;
+}
+body main > div div.times {
+  width: 100%;
+}
+body main > div div.times div.turnpoint {
+  padding: 20px 0;
+  border-bottom: 1px solid grey;
+}
+body main > div div.times div.turnpoint > p.name {
+  font-weight: bold;
+}
+body main > div div.times div.turnpoint > p.detail {
+  font-family: RobotoLight;
+  font-size: 0.7em;
+  color: #666666;
+}
+body main > div div.times div.turnpoint > table {
+  margin-top: 4px;
+  width: 100%;
+}
+body main > div div.times div.turnpoint > table tr td {
+  padding-bottom: 4px;
+}
+body main > div div.times div.turnpoint > table tr td,
+body main > div div.times div.turnpoint > table tr td p {
+  font-size: 15px;
+}
+body main > div div.times div.turnpoint > table tr td:nth-child(2),
+body main > div div.times div.turnpoint > table tr td:nth-child(3) {
+  width: 80px;
+  text-align: right;
+  vertical-align: top;
+}
+body main > div div.times div.turnpoint > table tr td.skipped {
+  color: red;
+}
+body main > div div.times div.turnpoint > table tr td.slower {
+  color: #e60000;
+}
+body main > div div.times div.turnpoint > table tr td.faster {
+  color: #00e602;
+}
+body main > div div.times div.turnpoint > table tr td p.name {
+  font-family: RobotoLight;
+  font-size: 0.7em;
+  color: #666666;
 }
 body footer {
   height: 20px;

@@ -51,6 +51,7 @@ Copyright © 2020 Lukas Buchs
     font-family: Roboto,Arial,sans-serif;
     font-size: 1.05rem;
     border-collapse: collapse;
+    color: #191919;
 }
 
 h1, h2, h3 {
@@ -91,13 +92,30 @@ body {
 
     div.timer {
         flex: 1;
+        min-height: 50px;
+        border-top: 1px solid #f3f3f3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        align-content: center;
+        background-color: #fcfcfc;
+
+        > span {
+            font-size: 46px;
+            font-family: RobotoLight;
+            width: 55px;
+            text-align: center;
+
+            &.separator {
+                width: 10px;
+            }
+        }
     }
 
     main {
         flex: 5;
         padding: 20px;
         overflow: auto;
-        display: flex;
 
         > div {
             min-height: 100%;
@@ -212,13 +230,61 @@ body {
             }
 
             div.ready {
-
                 text-align: center;
                 h1 {
                     margin-bottom: 20px;
                 }
+            }
 
+            div.times {
+                width: 100%;
 
+                div.turnpoint {
+                    padding: 20px 0;
+                    border-bottom: 1px solid grey;
+
+                    > p.name {
+                        font-weight: bold;
+                    }
+                    > p.detail {
+                        font-family: RobotoLight;
+                        font-size: 0.7em;
+                        color: #666666;
+                    }
+
+                    > table {
+                        margin-top: 4px;
+                        width: 100%;
+
+                        tr td {
+                            padding-bottom: 4px;
+                        }
+
+                        tr td, tr td p {
+                            font-size: 15px;
+                        }
+
+                        tr td:nth-child(2), tr td:nth-child(3) {
+                            width: 80px;
+                            text-align: right;
+                            vertical-align: top;
+                        }
+                        tr td.skipped {
+                            color: red;
+                        }
+                        tr td.slower {
+                            color: #e60000;
+                        }
+                        tr td.faster {
+                            color: #00e602;
+                        }
+                        tr td p.name {
+                            font-family: RobotoLight;
+                            font-size: 0.7em;
+                            color: #666666;
+                        }
+                    }
+                }
             }
         }
     }
