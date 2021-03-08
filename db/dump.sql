@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `attempt` (
   `category` tinyint(4) NOT NULL DEFAULT '1' COMMENT '1. Fussgänger 2. Leicht 3. Schwer',
   `gender` char(1) NOT NULL DEFAULT '' COMMENT 'M / W',
   `name` varchar(50) NOT NULL DEFAULT '',
+  `familyname` varchar(50) NOT NULL DEFAULT '',
   `email` varchar(50) NOT NULL DEFAULT '',
   `userAgent` varchar(255) NOT NULL DEFAULT '',
   `ipAddress` varchar(100) NOT NULL DEFAULT '',

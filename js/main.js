@@ -24,6 +24,16 @@ class main {
 
             if (commands.action === 'showForm') {
                 this._showForm(commands.data);
+                
+            } else {
+                // Button für Scanner einblenden
+                let btn = document.createElement('button');
+                btn.value = 'QR-Code scannen';
+                btn.addEventListener('click', async () => {
+                   this._getQrScan().then((scannerData) => {
+
+                   });
+                });
             }
 
         } catch (e) {
@@ -97,11 +107,15 @@ class main {
         html += '</div>';
 
         html += '<div class="formEl textEl">';
-        html += '<label for="fld_name">Name</label><input type="text" name="name" placeholder="Anonymer Speedygonzales" id="fld_name" value="' + data.name + '">';
+        html += '<label for="fld_name">Vorname</label><input type="text" name="name" placeholder="Vorname" id="fld_name" value="' + (data.name || '') + '">';
+        html += '</div>';
+        
+        html += '<div class="formEl textEl">';
+        html += '<label for="fld_familyname">Nachname</label><input type="text" name="familyname" placeholder="Nachname" id="fld_familyname" value="' + (data.familyname || '') + '">';
         html += '</div>';
 
         html += '<div class="formEl textEl">';
-        html += '<label for="fld_email">Email</label><input type="email" name="email" placeholder="anonymous@pdcs.ch" id="fld_email" value="' + data.email + '">';
+        html += '<label for="fld_email">Email</label><input type="email" name="email" placeholder="Email-Adresse" id="fld_email" value="' + (data.email || '') + '">';
         html += '</div>';
 
         html += '<div class="formEl radioEl">';
@@ -127,9 +141,31 @@ class main {
         formEl.addEventListener('submit', this._onFormSubmit.bind(this));
 
     }
+    
+    _getQrScan() {
+        return new Promise((resolve, reject) => {
+            try {
+                this._clearElement(this._mainDiv);
+                let canvas = document.createElement('canvas');
+                canvas.width = Math.max(document.body.clientHeight * 0.5, document.body.clientWidth * 0.9);
+                canvas.height = canvas.width;
+                canvas.classList.add('qrScanner');
+                this._mainDiv.appendChild(canvas);
+                
+                this._mainDiv.removeChild(canvas);
+                
+                // TODO: QR-Library
+                resolve({code: 'sbasjdlsjl', img: 'dhkasdjhsk'});
+                
+            } catch (er) {
+                reject(er);
+            }
+        });
+        
+    }
 
 
-    _onFormSubmit(e) {
+    async _onFormSubmit(e) {
         e.preventDefault();
         let formData = new FormData(e.target), formPacket={};
 
@@ -145,10 +181,13 @@ class main {
                 return;
             }
         }
+        
+        // Start-QR-Code scannen
+        formPacket.qrCode = await this._getQrScan();
 
-        this._queryApi('saveForm', {formPacket: formPacket}).then((r) => {
-            this._showReadyScreen();
-        });
+        await this._queryApi('saveForm', {formPacket: formPacket});
+        
+        this._showReadyScreen();
     }
 
     _showReadyScreen() {
@@ -157,8 +196,8 @@ class main {
         let readyDiv = document.createElement('div'), html='';
         readyDiv.className = 'ready';
 
-        html += '<h1>Ready!</h1>';
-        html += '<p>Scanne den QR-Code, um die Zeitmessung zu starten.</p>';
+        html += '<h1>Lets go!</h1>';
+        html += '<p>Du kannst deinen Lauf beginnen.</p>';
 
         readyDiv.innerHTML = html;
         this._mainDiv.appendChild(readyDiv);

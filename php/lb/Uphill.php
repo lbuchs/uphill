@@ -29,12 +29,15 @@ class Uphill {
         $this->_response = $response;
     }
 
+    /**
+     * Gibt den Hauptinhalt zurück.
+     * @return void
+     */
     public function getContent(): void {
-        $code = (string)$this->_request->params()->code;
         $attempt = $this->_getAttempt();
 
         // Noch nicht gestartet: Formular anzeigen
-        if (!$attempt || $attempt['canceled'] || (!$attempt['started'] && !$code)) {
+        if (!$attempt || $attempt['canceled']) {
 
             $return = new \stdClass();
             $return->action = 'showForm';
@@ -44,15 +47,7 @@ class Uphill {
         } else {
             $timestampSaved = false;
 
-            // Es muss als erstes der Start gescannt werden.
-            if (!$attempt['started'] && $code && !$this->_isStartCheckpoint($code)) {
-                throw new Exception('Scannen Sie den Start-QR-Code.');
-            }
 
-            // ready und code gescannt: zwischenzeit speichern
-            if ($code) {
-                $timestampSaved = $this->_saveTimestamp($attempt['attemptId'], $code);
-            }
 
             // Zeit anzeigen
             $return->action = 'showTime';
@@ -62,17 +57,65 @@ class Uphill {
         }
     }
 
+    /**
+     * Speichert den Inhalt des Registrierungsformulars
+     * @return void
+     */
     public function saveForm(): void {
         $formPacket = isset($this->_request->params()->formPacket) ? $this->_request->params()->formPacket : null;
         $this->_createAttempt($formPacket);
     }
 
+    /**
+     * Speichert den Scan eines QR-Codes
+     * @param string $code
+     * @param string $imgAsBase64
+     * @return void
+     * @throws Exception
+     */
+    public function saveCode(string $code, string $imgAsBase64): void {
+        $attempt = $this->_getAttempt();
+        if (!$attempt) {
+            throw new Exception('invalid command');
+        }
+        
+        $checkpointId = $this->_getCheckpointId($code);
+        if (!$checkpointId) {
+            throw new Exception('invalid code!');
+        }
+        
+        // Es muss als erstes der Start gescannt werden.
+        if (!$attempt['started'] && $code && !$this->_isStartCheckpoint($code)) {
+            throw new Exception('Der Code ist nicht der Start-QR-Code.');
+        }
+        
+        // Zeit speichern wenn noch nicht
+        if ($this->_saveTimestamp($attempt['attemptId'], $code)) {
+            
+            // bild speichern
+            $image = base64_decode($imgAsBase64);
+            
+            $dataDir = '../data';
+            if (!$dataDir && !mkdir($dataDir)) {
+                throw new Exception('cannot create data dir');
+            }
+            
+            $attemptDir = $dataDir . '/attemptId_' . $attempt['attemptId'];
+            if (!$attemptDir && !mkdir($attemptDir)) {
+                throw new Exception('cannot create attempt dir');
+            }
+            
+            // save file
+            file_put_contents($attemptDir . '/' . $code . '.jpg', $image);
+        }
+    }
+    
     protected function _createAttempt(\stdClass $formPacket): int {
         $st = $this->_db->pdo()->prepare('
             INSERT INTO `attempt` (
-                `sessionId`, `category`, `gender`, `name`, `email`, `userAgent`, `ipAddress`
+                `sessionId`, `category`, `gender`, `name`, `familyname`, `email`, `userAgent`, `ipAddress`
             ) VALUES (
-                :sessionId, :category, :gender, :name, :email, :userAgent, :ipAddress
+                :sessionId, :category, :gender, :name, :familyname, :email, :userAgent, :ipAddress
             )
         ');
 
@@ -80,6 +123,7 @@ class Uphill {
         $st->bindValue(':category', isset($formPacket->category) ? (int)$formPacket->category : 1, \PDO::PARAM_INT);
         $st->bindValue(':gender', isset($formPacket->gender) ? $formPacket->gender : '', \PDO::PARAM_STR);
         $st->bindValue(':name', isset($formPacket->name) ? $formPacket->name : '', \PDO::PARAM_STR);
+        $st->bindValue(':familyname', isset($formPacket->familyname) ? $formPacket->familyname : '', \PDO::PARAM_STR);
         $st->bindValue(':email', isset($formPacket->email) ? $formPacket->email : '', \PDO::PARAM_STR);
         $st->bindValue(':userAgent', (string)$_SERVER['HTTP_USER_AGENT'], \PDO::PARAM_STR);
         $st->bindValue(':ipAddress', (string)$_SERVER['REMOTE_ADDR'], \PDO::PARAM_STR);
