@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `attempt` (
   `userAgent` varchar(255) NOT NULL DEFAULT '',
   `ipAddress` varchar(100) NOT NULL DEFAULT '',
   `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `canceled` tinyint(4) NOT NULL DEFAULT '0',
+  `endedByUser` tinyint(4) NOT NULL DEFAULT '0',
   PRIMARY KEY (`attemptId`),
   KEY `sessionId` (`sessionId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4;
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `attempt` (
 -- Exportiere Daten aus Tabelle pdcs_runup.attempt: ~3 rows (ungefähr)
 DELETE FROM `attempt`;
 /*!40000 ALTER TABLE `attempt` DISABLE KEYS */;
-INSERT INTO `attempt` (`attemptId`, `sessionId`, `category`, `gender`, `name`, `email`, `userAgent`, `ipAddress`, `created`, `canceled`) VALUES
+INSERT INTO `attempt` (`attemptId`, `sessionId`, `category`, `gender`, `name`, `email`, `userAgent`, `ipAddress`, `created`, `endedByUser`) VALUES
 	(2, 'a7de11e6766bb7e3e9c949ad4c180d7b', 1, '', 'Lukas Buchs', 'lukasbuchs@gmail.com', '', '', '2020-11-10 12:38:23', 0),
 	(3, 'a7de11e6766bb7e3e9c949ad4c180d7b', 1, '', '', '', '', '', '2020-11-12 11:26:46', 0),
 	(10, 'ao7ns1o695gnh990taj8s6gf53', 1, '', '', '', 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1', '172.30.10.104', '2020-11-12 14:27:37', 0);

@@ -55,7 +55,7 @@ Copyright © 2020 Lukas Buchs
 }
 
 h1, h2, h3 {
-    font-family: RobotoLight;
+    font-family: RobotoLight,Arial,sans-serif;
     font-weight: normal;
     font-size: 1.6rem;
     margin-bottom: 6px;
@@ -64,7 +64,7 @@ h2, h3 {
     font-size: 1.4rem;
 }
 button {
-    font-family: RobotoMedium;
+    font-family: RobotoMedium,Arial,sans-serif;;
 }
 
 
@@ -102,7 +102,7 @@ body {
 
         > span {
             font-size: 46px;
-            font-family: RobotoLight;
+            font-family: RobotoLight,Arial,sans-serif;;
             width: 55px;
             text-align: center;
 
@@ -123,6 +123,7 @@ body {
             justify-content: center;
             align-items: center;
             align-content: center;
+            flex-direction: column;
 
 
             div.loader {
@@ -177,7 +178,7 @@ body {
                     }
 
                     &.submitEl input {
-                        font-family: RobotoMedium;
+                        font-family: RobotoMedium,Arial,sans-serif;
                         text-transform: uppercase;
                         padding: 10px;
                         background-color: #2ecc71;
@@ -190,9 +191,27 @@ body {
 
 
             }
-            
+
+            button.qr-code-scan {
+                background: #3498db;
+                background-image: linear-gradient(to bottom, #3498db, #2980b9);
+                border-radius: 11px;
+                border: 0;
+                font-family: RobotoMedium,Arial,sans-serif;
+                color: #ffffff;
+                font-size: 19px;
+                padding: 10px 20px 10px 20px;
+                text-decoration: none;
+
+                &:hover {
+                    background: #3cb0fd;
+                    background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+                    text-decoration: none;
+                }
+            }
+
             canvas.qrScanner {
-                background-color: royalblue;                
+                background-color: royalblue;
             }
 
 
@@ -236,6 +255,30 @@ body {
                 }
             }
 
+            div.scan-result {
+                width: 100%;
+                flex: 1;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                align-content: center;
+                flex-direction: column;
+                border-radius: 20px;
+
+                > div {
+                    > h1 {
+                        font-size: 100px;
+                        font-weight: bold;
+                        text-align: center;
+                    }
+                    > p {
+                        text-align: center;
+                        font-weight: bold;
+                    }
+                }
+
+            }
+
             div.times {
                 width: 100%;
 
@@ -247,7 +290,7 @@ body {
                         font-weight: bold;
                     }
                     > p.detail {
-                        font-family: RobotoLight;
+                        font-family: RobotoLight,Arial,sans-serif;;
                         font-size: 0.7em;
                         color: #666666;
                     }
@@ -279,7 +322,7 @@ body {
                             color: #00e602;
                         }
                         tr td p.name {
-                            font-family: RobotoLight;
+                            font-family: RobotoLight,Arial,sans-serif;;
                             font-size: 0.7em;
                             color: #666666;
                         }

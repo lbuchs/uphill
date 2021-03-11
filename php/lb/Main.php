@@ -25,6 +25,9 @@ class Main {
         require_once 'Response.php';
         require_once 'Db.php';
 
+        // Error Reporting komplett abschalten
+        error_reporting(0);
+
         $this->_startSession();
 
         $this->_request = new Request();
@@ -44,6 +47,8 @@ class Main {
             switch ($this->_request->action()) {
                 case 'getContent': $uphill->getContent(); break;
                 case 'saveForm': $uphill->saveForm(); break;
+                case 'saveQrScan': $uphill->saveQrScan(); break;
+                case 'endCurrentRun': $uphill->endCurrentRun(); break;
                 default: throw new \Exception('unknown action');
             }
 

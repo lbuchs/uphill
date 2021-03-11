@@ -37,7 +37,7 @@ class Uphill {
         $attempt = $this->_getAttempt();
 
         // Noch nicht gestartet: Formular anzeigen
-        if (!$attempt || $attempt['canceled']) {
+        if (!$attempt || $attempt['endedByUser']) {
 
             $return = new \stdClass();
             $return->action = 'showForm';
@@ -46,13 +46,6 @@ class Uphill {
             $this->_response->set($return);
 
         } else {
-            $timestampSaved = false;
-
-            // Es muss als erstes der Start gescannt werden.
-            if (!$attempt['started'] && $code && !$this->_isStartCheckpoint($code)) {
-                throw new \Exception('Scannen Sie den Start-QR-Code.');
-            }
-
 
             // Zeit anzeigen
             $return = new \stdClass();
@@ -70,13 +63,101 @@ class Uphill {
      */
     public function saveForm(): void {
         $formPacket = isset($this->_request->params()->formPacket) ? $this->_request->params()->formPacket : null;
+
+        // Daten validieren
+        if (filter_var($formPacket->email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new Exception('invalid email address');
+        }
+        $formPacket->name = filter_var($formPacket->name, FILTER_SANITIZE_STRING);
+        $formPacket->familyname = filter_var($formPacket->familyname, FILTER_SANITIZE_STRING);
+        $formPacket->gender = filter_var($formPacket->gender, FILTER_SANITIZE_STRING);
+
         $this->_createAttempt($formPacket);
     }
 
 
+    /**
+     * Speichert einen QR-Code
+     * @return void
+     * @throws Exception
+     */
+    public function saveQrScan(): void {
+        $code = isset($this->_request->params()->code) ? $this->_request->params()->code : null;
+        $img = isset($this->_request->params()->img) ? $this->_request->params()->img : null;
+
+        // Code aus URL
+        if ($code) {
+            $m = array();
+            if (preg_match('/([a-z0-9]{20,})/', $code, $m)) {
+                $code = $m[1];
+            } else {
+                $code = '';
+            }
+        }
+
+        $attempt = $this->_getAttempt();
+
+        if (!$attempt || $attempt['endedByUser']) {
+            throw new Exception('invalid attempt');
+        }
+
+        // Speichern
+        $timestampSaved = $this->_saveTimestamp($attempt['attemptId'], $code);
+
+        // Bild ablegen
+        if ($timestampSaved && $img && $code) {
+            if (substr($img, 0, strlen('data:image/jpeg;base64,')) === 'data:image/jpeg;base64,') {
+                $jpg = base64_decode(substr($img, strlen('data:image/jpeg;base64,')));
+                if ($jpg) {
+                    $dataDir = '../data';
+                    $attemptDir = $dataDir . '/attempt_' . $attempt['attemptId'];
+                    if (!is_dir($attemptDir) && !mkdir($attemptDir)) {
+                        throw new Exception('cannot create attempt dir');
+                    }
+
+                    file_put_contents($attemptDir . '/' .$code . '.jpg', $jpg);
+                }
+            }
+        }
+
+        $isStart = $this->_isStartCheckpoint($code);
+        $isEnd = $this->_isEndCheckpoint($code);
+
+        // mail versenden
+        if ($timestampSaved && $isEnd) {
+            $test = $this->buildMailHtml($this->_getTimeHtml($attempt), $attempt);
+//            file_put_contents('TEST.HTML', $test);
+        }
+
+        // Route bei attempt eintragen
+        if ($timestampSaved && $isStart) {
+            $this->_setRouteId($code);
+        }
+
+        // Rückgabe
+        $return = new \stdClass();
+        $return->saved = $timestampSaved;
+        $return->isStart = $isStart;
+        $return->isEnd = $isEnd;
+        $this->_response->set($return);
+    }
 
 
+    /**
+     * Lauf neu starten
+     * @return void
+     */
+    public function endCurrentRun(): void {
+        $attempt = $this->_getAttempt();
 
+        if (!$attempt) {
+            throw new Exception('invalid attempt');
+        }
+
+        $st = $this->_db->pdo()->prepare('UPDATE attempt SET endedByUser = 1 WHERE attemptId = :attemptId');
+        $st->bindParam(':attemptId', $attempt['attemptId'], \PDO::PARAM_INT);
+        $st->execute();
+    }
 
 
 
@@ -212,6 +293,7 @@ class Uphill {
                 attempt.category,
                 attempt.gender,
                 attempt.`name`,
+                attempt.`familyname`,
                 attempt.email,
 
                 IF((
@@ -222,7 +304,7 @@ class Uphill {
                     LIMIT 1
                 ) IS NULL, 0, 1) AS started,
 
-                IF (attempt.canceled = 1 OR DATE(attempt.created) != CURDATE(), 1, 0) AS canceled,
+                IF (attempt.endedByUser = 1 OR DATE(attempt.created) != CURDATE(), 1, 0) AS endedByUser,
                 (
                     SELECT ts.time
                     FROM `timestamp` AS ts
@@ -239,6 +321,7 @@ class Uphill {
                         AND `timestamp`.checkpointId = (
                            SELECT checkpoint.checkpointId
                            FROM checkpoint
+                           WHERE checkpoint.routeId = attempt.routeId
                            ORDER BY checkpoint.distance DESC
                            LIMIT 1
                         )
@@ -252,6 +335,7 @@ class Uphill {
                     AND `timestamp`.checkpointId = (
                        SELECT checkpoint.checkpointId
                        FROM checkpoint
+                       WHERE checkpoint.routeId = attempt.routeId
                        ORDER BY checkpoint.distance DESC
                        LIMIT 1
                     )
@@ -272,9 +356,14 @@ class Uphill {
             $row['category'] = (int)$row['category'];
             $row['started'] = !!$row['started'];
             $row['finished'] = !!$row['finished'];
-            $row['canceled'] = !!$row['canceled'];
+            $row['endedByUser'] = !!$row['endedByUser'];
             $row['startTime'] = $row['startTime'] ? strtotime($row['startTime']) : null;
             $row['finishTime'] = $row['finishTime'] ? strtotime($row['finishTime']) : null;
+
+            // Endzeit eintragen, wenn sie nicht vorhanden ist.
+            if ($row['endedByUser'] && $row['startTime'] && !$row['finishTime']) {
+                $row['finishTime'] = $row['startTime'];
+            }
         }
 
         return $row ?: array();
@@ -347,11 +436,33 @@ class Uphill {
     }
 
     protected function _isEndCheckpoint(string $code): bool {
-        $st = $this->_db->pdo()->prepare('SELECT checkpoint.`code` FROM checkpoint ORDER BY distance DESC LIMIT 1');
+        $st = $this->_db->pdo()->prepare('
+                SELECT checkpoint.`code`
+                FROM checkpoint
+                WHERE checkpoint.routeId = (SELECT cp.routeId FROM checkpoint AS cp WHERE cp.`code` = :code LIMIT 1)
+                ORDER BY distance DESC
+                LIMIT 1');
+        $st->bindParam(':code', $code, \PDO::PARAM_STR);
         $st->execute();
         $row = $st->fetch(\PDO::FETCH_ASSOC);
         unset ($st);
         return $row && $row['code'] === $code;
+    }
+
+    /**
+     * Setzt dem attempt die Route
+     * @param string $code
+     * @return void
+     */
+    protected function _setRouteId(string $code): void {
+        $st = $this->_db->pdo()->prepare('
+                UPDATE attempt
+                SET attempt.routeId =
+                    (SELECT checkpoint.routeId FROM checkpoint WHERE checkpoint.`code` = :code LIMIT 1)
+                WHERE attempt.routeId IS NULL
+            ');
+        $st->bindParam(':code', $code, \PDO::PARAM_STR);
+        $st->execute();
     }
 
     /**
@@ -368,7 +479,7 @@ class Uphill {
 
         $st = $this->_db->pdo()->prepare('
             SELECT
-                attempt.`name`,
+                CONCAT(attempt.`name`, \' \', attempt.`familyname`) AS `name`,
                 TIMEDIFF(
                    `timestamp`.`time`,
                    (
@@ -436,7 +547,7 @@ class Uphill {
         $st = $this->_db->pdo()->prepare('
             SELECT
                 attempt.`attemptId`,
-                attempt.`name`,
+                CONCAT(attempt.`name`, \' \', attempt.`familyname`) AS `name`,
                 TIMEDIFF(
                    `timestamp`.`time`,
                    (
@@ -447,6 +558,8 @@ class Uphill {
                          SELECT checkpoint.checkpointId
                          FROM checkpoint
                          WHERE checkpoint.distance = 0
+                         AND checkpoint.routeId = attempt.routeId
+                         LIMIT 1
                       )
                    )
                 ) AS walkTime
@@ -456,15 +569,9 @@ class Uphill {
             INNER JOIN checkpoint ON `timestamp`.checkpointId = checkpoint.checkpointId
 
             WHERE checkpoint.checkpointId = :checkpointId
-            AND attempt.`name` <> \'\'
-            AND attempt.`email` <> \'\'
-            AND attempt.`email` = (SELECT curAttempt.`email` FROM attempt AS curAttempt WHERE cuAttempt.attemptId = :currentAttemptId)
-            AND `timestamp`.checkpointId <> (
-               SELECT startCp.checkpointId
-               FROM checkpoint AS startCp
-               WHERE startCp.distance = 0
-            )
-            AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint)
+             AND checkpoint.distance > 0
+             AND attempt.`email` = (SELECT curAttempt.`email` FROM attempt AS curAttempt WHERE curAttempt.attemptId = :currentAttemptId)
+             AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint WHERE checkpoint.routeId = attempt.routeId)
 
             ORDER BY `walkTime` ASC
             LIMIT 1
@@ -569,5 +676,38 @@ class Uphill {
         } else {
             return $diff;
         }
+    }
+
+    protected function buildMailHtml(string $timeHtml, $data) {
+        $mailHtml = '<!DOCTYPE html>' . "\n";
+        $mailHtml .= '<html><head>';
+        $mailHtml .= '<meta charset="UTF-8">';
+
+        // css laden
+        $css = file_get_contents('../resources/css/main.css');
+        $css = str_replace("\n", " ", $css);
+        $cnt = 1;
+        while ($cnt > 0) {
+            $css = str_replace("  ", " ", $css, $cnt);
+        }
+
+        $css = str_replace('..', 'https://uphill.pdcs.ch/resources', $css);
+
+
+        $mailHtml .= '<style>';
+        $mailHtml .= $css;
+        $mailHtml .= '</style>';
+
+        $mailHtml .= '</head><body><header>';
+        $mailHtml .= 'Gratulation, ' . htmlspecialchars($data['name']) . '!';
+        $mailHtml .= '</header>';
+
+//        body main > div div.times
+        $mailHtml .= '<main><div><div class="times">';
+        $mailHtml .= '<p>Vielen Dank für deine Teilnahme an der Möntschele Uphill Challenge. Nachfolgend deine Zeiten und die Rekordzeiten.</p>';
+        $mailHtml .= $timeHtml;
+        $mailHtml .= '</div></div>';
+        $mailHtml .= '</main></body></html>';
+        return $mailHtml;
     }
 }

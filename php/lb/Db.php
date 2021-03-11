@@ -21,7 +21,7 @@ class Db {
      */
     public function pdo(): \PDO {
         if ($this->_pdo === null) {
-            $this->_pdo = new \PDO(UH_DB_DSN, UH_DB_USER, UH_DB_PASSWORD);
+            $this->_pdo = new \PDO(UH_DB_DSN, UH_DB_USER, UH_DB_PASSWORD, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
         }
         return $this->_pdo;
     }

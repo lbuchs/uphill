@@ -50,7 +50,7 @@ Copyright © 2020 Lukas Buchs
 h1,
 h2,
 h3 {
-  font-family: RobotoLight;
+  font-family: RobotoLight, Arial, sans-serif;
   font-weight: normal;
   font-size: 1.6rem;
   margin-bottom: 6px;
@@ -60,7 +60,7 @@ h3 {
   font-size: 1.4rem;
 }
 button {
-  font-family: RobotoMedium;
+  font-family: RobotoMedium, Arial, sans-serif;
 }
 body {
   position: absolute;
@@ -95,7 +95,7 @@ body div.timer {
 }
 body div.timer > span {
   font-size: 46px;
-  font-family: RobotoLight;
+  font-family: RobotoLight, Arial, sans-serif;
   width: 55px;
   text-align: center;
 }
@@ -113,6 +113,7 @@ body main > div {
   justify-content: center;
   align-items: center;
   align-content: center;
+  flex-direction: column;
 }
 body main > div div.loader {
   border: 10px solid #f3f3f3;
@@ -157,7 +158,7 @@ body main > div form > div.formEl.radioEl input {
   margin: 8px 5px;
 }
 body main > div form > div.formEl.submitEl input {
-  font-family: RobotoMedium;
+  font-family: RobotoMedium, Arial, sans-serif;
   text-transform: uppercase;
   padding: 10px;
   background-color: #2ecc71;
@@ -165,6 +166,25 @@ body main > div form > div.formEl.submitEl input {
   border: 0;
   border-radius: 4px;
   box-shadow: 1px 1px 2px 1px rgba(91, 91, 91, 0.28);
+}
+body main > div button.qr-code-scan {
+  background: #3498db;
+  background-image: linear-gradient(to bottom, #3498db, #2980b9);
+  border-radius: 11px;
+  border: 0;
+  font-family: RobotoMedium, Arial, sans-serif;
+  color: #ffffff;
+  font-size: 19px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+body main > div button.qr-code-scan:hover {
+  background: #3cb0fd;
+  background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+  text-decoration: none;
+}
+body main > div canvas.qrScanner {
+  background-color: royalblue;
 }
 body main > div div.slider {
   position: relative;
@@ -201,6 +221,25 @@ body main > div div.ready {
 body main > div div.ready h1 {
   margin-bottom: 20px;
 }
+body main > div div.scan-result {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  flex-direction: column;
+  border-radius: 20px;
+}
+body main > div div.scan-result > div > h1 {
+  font-size: 100px;
+  font-weight: bold;
+  text-align: center;
+}
+body main > div div.scan-result > div > p {
+  text-align: center;
+  font-weight: bold;
+}
 body main > div div.times {
   width: 100%;
 }
@@ -212,7 +251,7 @@ body main > div div.times div.turnpoint > p.name {
   font-weight: bold;
 }
 body main > div div.times div.turnpoint > p.detail {
-  font-family: RobotoLight;
+  font-family: RobotoLight, Arial, sans-serif;
   font-size: 0.7em;
   color: #666666;
 }
@@ -243,7 +282,7 @@ body main > div div.times div.turnpoint > table tr td.faster {
   color: #00e602;
 }
 body main > div div.times div.turnpoint > table tr td p.name {
-  font-family: RobotoLight;
+  font-family: RobotoLight, Arial, sans-serif;
   font-size: 0.7em;
   color: #666666;
 }
