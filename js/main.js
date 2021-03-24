@@ -201,8 +201,8 @@ class main {
         let familyname = data.familyname ? data.familyname : '';
         let email = data.email ? data.email : '';
 
-        html += '<h1>Willkommen bei der Möntschele Uphill Challange!</h1>';
-        html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stopuhr, um zu sehen, wie lange du für die 676 Höhenmeter benötigst.</p>';
+        html += '<h1>Willkommen bei der Möntschele Uphill Challenge!</h1>';
+        html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stoppuhr, um zu sehen, wie lange du für die 665 Höhenmeter benötigst.</p>';
 
         html += '<div class="slider">';
         html += '<h2>So gehts</h2>';
