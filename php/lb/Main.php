@@ -41,17 +41,41 @@ class Main {
 
     public function run() {
         try {
-            require_once 'Uphill.php';
-            $uphill = new Uphill($this->_db, $this->_request, $this->_response);
 
-            switch ($this->_request->action()) {
-                case 'getContent': $uphill->getContent(); break;
-                case 'saveForm': $uphill->saveForm(); break;
-                case 'saveQrScan': $uphill->saveQrScan(); break;
-                case 'endCurrentRun': $uphill->endCurrentRun(); break;
-                default: throw new \Exception('unknown action');
+            $forbidden = false;
+            if (filter_input(INPUT_SERVER, 'HTTP_ORIGIN')) {
+                $whitelist = ['pdcs.ch', 'www.pdcs.ch', 'uphill.pdcs.ch', 'www.uphill.pdcs.ch', 'localhost', '127.0.0.1'];
+
+                if (in_array(parse_url(filter_input(INPUT_SERVER, 'HTTP_ORIGIN'), PHP_URL_HOST), $whitelist)) {
+                    header('Access-Control-Allow-Origin: ' . filter_input(INPUT_SERVER, 'HTTP_ORIGIN'));
+                    header('Access-Control-Allow-Methods: POST');
+                    header('Access-Control-Allow-Headers: Content-Type');
+
+                } else {
+                    header($_SERVER["SERVER_PROTOCOL"]." 403 Forbidden");
+                    $forbidden = true;
+                }
             }
 
+            // bots forbidden
+            if (preg_match('/bot\b|index|spider|crawl|wget|slurp|Mediapartners-Google/i', filter_input(INPUT_SERVER, 'HTTP_USER_AGENT'))) {
+                    header($_SERVER["SERVER_PROTOCOL"]." 403 Forbidden");
+                    $forbidden = true;
+            }
+
+            if ($this->_request->method() === 'POST' && !$forbidden) {
+                require_once 'Uphill.php';
+                $uphill = new Uphill($this->_db, $this->_request, $this->_response);
+
+                switch ($this->_request->action()) {
+                    case 'getContent': $uphill->getContent(); break;
+                    case 'saveForm': $uphill->saveForm(); break;
+                    case 'saveQrScan': $uphill->saveQrScan(); break;
+                    case 'endCurrentRun': $uphill->endCurrentRun(); break;
+                    case 'getRanking': $uphill->getRanking(); break;
+                    default: throw new \Exception('unknown action');
+                }
+            }
 
         } catch (\Throwable $ex) {
             $this->_response->set($ex);

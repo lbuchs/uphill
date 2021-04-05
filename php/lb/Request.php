@@ -8,10 +8,13 @@ namespace lb;
 
 
 class Request {
+    protected $_method = '';
     protected $_action = '';
     protected $_params;
 
     public function __construct() {
+
+        $this->_method = filter_input(INPUT_SERVER, 'REQUEST_METHOD');
         $input = \file_get_contents('php://input');
         $this->_params = new \stdClass();
 
@@ -28,6 +31,10 @@ class Request {
 
     public function action() {
         return $this->_action;
+    }
+
+    public function method() {
+        return $this->_method;
     }
 
     public function params() {

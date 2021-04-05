@@ -276,7 +276,7 @@ class main {
                 if (navigator.mediaDevices) {
                     this._webcamMsg = 'Warte auf Freigabe...';
 
-                    navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then((stream) => {
+                    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'environment' } }).then((stream) => {
                         this._webcamStream = stream;
                         this._webcamVideo = document.createElement('video');
                         this._webcamVideo.srcObject = stream;

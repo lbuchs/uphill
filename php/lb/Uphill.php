@@ -66,7 +66,7 @@ class Uphill {
 
         // Daten validieren
         if (filter_var($formPacket->email, FILTER_VALIDATE_EMAIL) === false) {
-            throw new Exception('invalid email address');
+            throw new \Exception('invalid email address');
         }
         $formPacket->name = filter_var($formPacket->name, FILTER_SANITIZE_STRING);
         $formPacket->familyname = filter_var($formPacket->familyname, FILTER_SANITIZE_STRING);
@@ -98,7 +98,11 @@ class Uphill {
         $attempt = $this->_getAttempt();
 
         if (!$attempt || $attempt['endedByUser']) {
-            throw new Exception('invalid attempt');
+            throw new \Exception('invalid attempt');
+        }
+
+        if (!$attempt['started'] && !$this->_isStartCheckpoint($code)) {
+            throw new \Exception('Zurück zum Start! Du hast den Start verpasst.');
         }
 
         // Speichern
@@ -112,7 +116,7 @@ class Uphill {
                     $dataDir = '../data';
                     $attemptDir = $dataDir . '/attempt_' . $attempt['attemptId'];
                     if (!is_dir($attemptDir) && !mkdir($attemptDir)) {
-                        throw new Exception('cannot create attempt dir');
+                        throw new \Exception('cannot create attempt dir');
                     }
 
                     file_put_contents($attemptDir . '/' .$code . '.jpg', $jpg);
@@ -151,12 +155,114 @@ class Uphill {
         $attempt = $this->_getAttempt();
 
         if (!$attempt) {
-            throw new Exception('invalid attempt');
+            throw new \Exception('invalid attempt');
         }
 
         $st = $this->_db->pdo()->prepare('UPDATE attempt SET endedByUser = 1 WHERE attemptId = :attemptId');
         $st->bindParam(':attemptId', $attempt['attemptId'], \PDO::PARAM_INT);
         $st->execute();
+    }
+
+
+    /**
+     * Gibt das Ranking für die Webseite zurück
+     * @return void
+     */
+    public function getRanking(): void {
+        $routeId = (int)$this->_request->params()->routeId;
+        $st = $this->_db->pdo()->prepare('
+            SELECT
+                attempt.attemptId,
+                attempt.category,
+                attempt.gender,
+                CONCAT(attempt.name, \' \', attempt.familyname) AS fullname,
+                MD5(attempt.email) AS user,
+
+                (
+                   SELECT `timestamp`.time
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 1)
+                ) AS start_time,
+
+                (
+                   SELECT `timestamp`.time
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 2)
+                ) AS tp1_time,
+
+                (
+                   SELECT `timestamp`.time
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 3)
+                ) AS tp2_time,
+
+
+                (
+                   SELECT `timestamp`.time
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 4)
+                ) AS goal_time,
+
+                (
+                   SELECT UNIX_TIMESTAMP(`timestamp`.time)
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 4)
+                ) - (
+                   SELECT UNIX_TIMESTAMP(`timestamp`.time)
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 1)
+                ) AS walkTime
+
+
+            FROM attempt
+
+            WHERE attempt.routeId = :routeId
+            AND (
+               SELECT COUNT(*)
+               FROM timestamp
+               WHERE timestamp.attemptId = attempt.attemptId
+            ) = (
+               SELECT COUNT(*)
+               FROM checkpoint
+               WHERE checkpoint.routeId = attempt.routeId
+            )
+
+            ORDER BY walkTime ASC');
+        $st->bindParam(':routeId', $routeId, \PDO::PARAM_INT);
+        $st->execute();
+        $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
+        unset ($st);
+
+        $ranking = array();
+        $categorys = array();
+        foreach($rows as $row) {
+            $ranking[] = array(
+                'attemptId' => (int)$row['attemptId'],
+                'category' => (int)$row['category'],
+                'gender' => $row['gender'],
+                'fullname' => $row['fullname'],
+                'user' => $row['user'],
+                'start' => strtotime($row['start_time']),
+                'tp1' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['tp1_time'])),
+                'tp2' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['tp2_time'])),
+                'goal' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['goal_time'])),
+                'walkTime' => (int)$row['walkTime']
+            );
+
+            $categorys[$row['gender'] . $row['category']] = 1;
+        }
+
+        // Rückgabe
+        $return = new \stdClass();
+        $return->ranking = $ranking;
+        $return->categorys = $categorys;
+        $this->_response->set($return);
     }
 
 
@@ -318,13 +424,14 @@ class Uphill {
                         SELECT `timestamp`.timestampId
                         FROM `timestamp`
                         WHERE `timestamp`.attemptId = attempt.attemptId
-                        AND `timestamp`.checkpointId = (
+                        AND `timestamp`.checkpointId = IFNULL((
                            SELECT checkpoint.checkpointId
                            FROM checkpoint
                            WHERE checkpoint.routeId = attempt.routeId
                            ORDER BY checkpoint.distance DESC
                            LIMIT 1
-                        )
+                        ), -1)
+                        LIMIT 1
                     )
                 IS NULL, 0, 1) AS finished,
 
@@ -332,13 +439,14 @@ class Uphill {
                     SELECT `timestamp`.time
                     FROM `timestamp`
                     WHERE `timestamp`.attemptId = attempt.attemptId
-                    AND `timestamp`.checkpointId = (
+                    AND `timestamp`.checkpointId = IFNULL((
                        SELECT checkpoint.checkpointId
                        FROM checkpoint
                        WHERE checkpoint.routeId = attempt.routeId
                        ORDER BY checkpoint.distance DESC
                        LIMIT 1
-                    )
+                    ), -1)
+                    LIMIT 1
                 ) AS finishTime
 
             FROM attempt
@@ -653,7 +761,7 @@ class Uphill {
         $t1 = explode(':', $oldTime);
         $t2 = explode(':', $newTime);
         if (count($t1) !== 3 || count($t2) !== 3) {
-            throw new Exception('invalid time format');
+            throw new \Exception('invalid time format');
         }
 
         $t1 = array_map('intval', $t1);
@@ -676,6 +784,24 @@ class Uphill {
         } else {
             return $diff;
         }
+    }
+
+    /**
+     * Gibt die Zeitdifferenz in HH:MM:SS zurück
+     * @param int $t1
+     * @param int $t2
+     * @return string
+     */
+    protected function _timeDiffString(int $t1, int $t2): string {
+        $seconds = abs($t1 - $t2);
+        $hours = floor($seconds / 3600);
+        $seconds -= ($hours * 3600);
+        $minutes = floor($seconds / 60);
+        $seconds -= ($minutes * 60);
+
+        return str_pad((string)$hours, 2, '0', STR_PAD_LEFT) . ':' .
+                str_pad((string)$minutes, 2, '0', STR_PAD_LEFT) . ':' .
+                str_pad((string)$seconds, 2, '0', STR_PAD_LEFT);
     }
 
     protected function buildMailHtml(string $timeHtml, $data) {
