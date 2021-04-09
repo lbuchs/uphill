@@ -7,9 +7,11 @@ class Ranking {
     constructor(routeId) {
         this._routeId = routeId;
         this._container = document.getElementById('ranking');
+        this._data = {};
         if (this._container) {
             this.getData().then((data) => {
-               this.buildHtml(data);
+                this._data = data;
+                this.buildHtml(data);
             }).catch((e) => {
                 window.alert(e.message || 'Es ist ein Fehler aufgetreten.');
             });
@@ -41,7 +43,7 @@ class Ranking {
 
     buildHtml(data) {
         this.buildTitle('Gesamtrangliste');
-        this.buildTable(data.ranking, null, null, true);
+        this.buildTable(data.ranking, null, null, null, true);
 
         if (data.categorys.M1 || data.categorys.F1) {
             this.buildTitle('Kategorie Fussgänger');
@@ -60,12 +62,24 @@ class Ranking {
 
         if (data.categorys.F1 || data.categorys.F2 || data.categorys.F3) {
             this.buildTitle('Kategorie Damen');
-            this.buildTable(data.ranking, null, 'W', true);
+            this.buildTable(data.ranking, null, 'W', null, true);
         }
+
+        this.getUser(data.ranking).forEach((user) => {
+            console.log(user);
+            let container = document.createElement('div');
+            container.id = 'user-' + user;
+            container.style.display = 'none';
+
+            this.buildTitle('Alle Zeiten von ' + this.getNameByUser(data.ranking, user), container);
+            this.buildTable(data.ranking, null, null, user, true, false, container);
+
+           this._container.appendChild(container);
+        });
     }
 
 
-    buildTable(ranking, filterCategory=null, filterGender=null, showCategory=false, uniqueUser=true) {
+    buildTable(ranking, filterCategory=null, filterGender=null, filterUser=null, showCategory=false, uniqueUser=true, appendTo=null) {
         let table = document.createElement('table'), place=0;
 
         // Klassen
@@ -73,7 +87,7 @@ class Ranking {
         table.classList.add('gender_' + (filterGender ? filterGender.toLowerCase() : 'all'));
 
         // Head
-        this.addTableHead(table, showCategory);
+        this.addTableHead(table, showCategory, !filterUser);
 
         // user
         let userList = [];
@@ -89,6 +103,11 @@ class Ranking {
             }
             if (filterGender) {
                 if (rank.gender !== filterGender) {
+                    continue;
+                }
+            }
+            if (filterUser) {
+                if (rank.user !== filterUser) {
                     continue;
                 }
             }
@@ -112,49 +131,67 @@ class Ranking {
             }
 
             place++;
-            let columns = [
-                place,
-                rank.fullname,
-                showCategory ? ct : null,
-                (new Date(rank.start * 1000)).toLocaleString('de-CH', { year: 'numeric', month: '2-digit', day: '2-digit' }), // Datum
-                (new Date(rank.start * 1000)).toLocaleString('de-CH', { hour: 'numeric', minute: 'numeric', second: 'numeric'}), // Zeit
-                rank.tp1,
-                rank.tp2,
-                rank.goal
-            ];
+            let columns = {
+                place   : place,
+                fullname: filterUser ? null : rank.fullname,
+                category: showCategory ? ct : null,
+                date    : (new Date(rank.start * 1000)).toLocaleString('de-CH', { year: 'numeric', month: '2-digit', day: '2-digit' }), // Datum
+                time    : (new Date(rank.start * 1000)).toLocaleString('de-CH', { hour: 'numeric', minute: 'numeric', second: 'numeric'}), // Zeit
+                tp1     : rank.tp1,
+                tp2     : rank.tp2,
+                goal    : rank.goal
+            };
 
-            columns.forEach((column) => {
+            for (let columnName in columns) {
+                let column = columns[columnName];
                 if (column !== null) {
                     let cell = document.createElement('td');
                     cell.textContent = column;
                     if (typeof column === 'string' && (column.indexOf('.') !== -1 || column.indexOf(':') !== -1)) {
                         cell.style.textAlign = 'right';
                     }
+
+                    // make link
+                    if (columnName === 'fullname') {
+                        cell.classList.add('userLink');
+                        cell.addEventListener('click', () => {
+                            this.goToUser(rank.user);
+                        });
+                    }
+
                     row.appendChild(cell);
                 }
-            });
+            };
 
             table.appendChild(row);
         }
 
-
-        this._container.appendChild(table);
+        if (appendTo) {
+            appendTo.appendChild(table);
+        } else {
+            this._container.appendChild(table);
+        }
     }
 
-    buildTitle(title) {
+    buildTitle(title, appendTo=null) {
         let el = document.createElement('h2');
         el.textContent = title;
-        this._container.appendChild(el);
+
+        if (appendTo) {
+            appendTo.appendChild(el);
+        } else {
+            this._container.appendChild(el);
+        }
     }
 
 
-    addTableHead(table, showCategory) {
+    addTableHead(table, showCategory, showUser) {
         let row = document.createElement('tr');
         table.appendChild(row);
 
         let columns = [
             'Rang',
-            'Name',
+            showUser ? 'Name' : null,
             showCategory ? 'Kat.' : null,
             'Datum',
             'Startzeit',
@@ -170,5 +207,40 @@ class Ranking {
                 row.appendChild(cell);
             }
         });
+    }
+
+    goToUser(gtUser) {
+        this.getUser(this._data.ranking).forEach((user) => {
+            let el = document.getElementById('user-' + user);
+            if (el) {
+                el.style.display = gtUser === user ? 'initial' : 'none';
+            }
+        });
+
+        window.location.href = '#user-' + gtUser;
+    }
+
+    /**
+     * Return all user ids
+     * @param {Array} ranking
+     * @returns {Array}
+     */
+    getUser(ranking) {
+        let users = [];
+        for (let i=0; i<ranking.length; i++) {
+            if (ranking[i].user && users.indexOf(ranking[i].user) === -1) {
+                users.push(ranking[i].user);
+            }
+        }
+        return users;
+    }
+
+    getNameByUser(ranking, user) {
+        for (let i=0; i<ranking.length; i++) {
+            if (ranking[i].user === user) {
+                return ranking[i].fullname;
+            }
+        }
+        return '';
     }
 }

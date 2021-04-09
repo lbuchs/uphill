@@ -2,7 +2,7 @@
  * Copyright © 2020 Lukas Buchs
  */
 
-class main {
+class Main {
 
     constructor() {
         this._mainDiv = document.querySelector("main > div");
@@ -276,7 +276,13 @@ class main {
                 if (navigator.mediaDevices) {
                     this._webcamMsg = 'Warte auf Freigabe...';
 
-                    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'environment' } }).then((stream) => {
+                    // allow front camera with get parameter ?camera=front
+                    let facingMode = 'environment';
+                    if (this._getGetParam('camera') === 'front') {
+                        facingMode = 'user';
+                    }
+
+                    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: facingMode } }).then((stream) => {
                         this._webcamStream = stream;
                         this._webcamVideo = document.createElement('video');
                         this._webcamVideo.srcObject = stream;

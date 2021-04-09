@@ -114,12 +114,7 @@ class Uphill {
                 $jpg = base64_decode(substr($img, strlen('data:image/jpeg;base64,')));
                 if ($jpg) {
                     $dataDir = '../data';
-                    $attemptDir = $dataDir . '/attempt_' . $attempt['attemptId'];
-                    if (!is_dir($attemptDir) && !mkdir($attemptDir)) {
-                        throw new \Exception('cannot create attempt dir');
-                    }
-
-                    file_put_contents($attemptDir . '/' .$code . '.jpg', $jpg);
+                    file_put_contents($dataDir . '/' . str_pad((string)$attempt['attemptId'], 4, '0', STR_PAD_LEFT) . '-' . $code . '.jpg', $jpg);
                 }
             }
         }
@@ -129,13 +124,15 @@ class Uphill {
 
         // mail versenden
         if ($timestampSaved && $isEnd) {
-            $test = $this->buildMailHtml($this->_getTimeHtml($attempt), $attempt);
-//            file_put_contents('TEST.HTML', $test);
+            $attempt = $this->_getAttempt();
+            if ($attempt['completed']) { // Bestätigungsmail
+                $this->_sendMail($attempt);
+            }
         }
 
         // Route bei attempt eintragen
         if ($timestampSaved && $isStart) {
-            $this->_setRouteId($code);
+            $this->_setRouteId((int)$attempt['attemptId']);
         }
 
         // Rückgabe
@@ -274,17 +271,27 @@ class Uphill {
     protected function _getTimeHtml(array $attempt): string {
         $checkpoints = $this->_getCheckpoints($attempt['attemptId']);
         $html = '';
+        $altitude = null;
 
         foreach ($checkpoints as $checkpoint) {
             $alltimeBest = $this->_getAlltimeBest($checkpoint['checkpointId']);
             $userBest = $this->_getUserBest($checkpoint['checkpointId'], $attempt['attemptId']);
-            $womanBest = $this->_getAlltimeBest($checkpoint['checkpointId'], 'W');
+            $womanBest = $attempt['gender'] === 'W' ? $this->_getAlltimeBest($checkpoint['checkpointId'], 'W') : [];
             $categoryBest = $this->_getAlltimeBest($checkpoint['checkpointId'], null, $attempt['category']);
+
+            // Differenz Höhe anzeigen
+            $altiStr = '';
+            if ($altitude === null) {
+                $altiStr = '0m';
+                $altitude = $checkpoint['altitude'];
+            } else {
+                $altiStr = ($checkpoint['altitude'] - $altitude) . 'm';
+            }
 
             $html .= '<div class="turnpoint">';
             $html .= '<p class="name">' . htmlspecialchars($checkpoint['name']) . '</p><p class="detail">→ '
                     . round($checkpoint['distance']/1000,2) . 'km, ↑ '
-                    . $checkpoint['altitude'] . 'm</p>';
+                    . $altiStr . '</p>';
 
 
             $html .= '<table>';
@@ -402,11 +409,23 @@ class Uphill {
                 attempt.`familyname`,
                 attempt.email,
 
+                IF (attempt.routeId IS NULL, \'\', (
+                   SELECT route.name
+                   FROM route
+                   WHERE route.routeId = attempt.routeId
+                )) AS routeName,
+
                 IF((
                     SELECT ts.timestampId
                     FROM `timestamp` AS ts
                     WHERE ts.attemptId = attempt.attemptId
-                    AND ts.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.distance = 0 LIMIT 1)
+                    AND ts.checkpointId = (
+                        SELECT checkpoint.checkpointId
+                        FROM checkpoint
+                        WHERE checkpoint.order = 1
+                        AND checkpoint.routeId = IFNULL(attempt.routeId, -1)
+                        LIMIT 1
+                    )
                     LIMIT 1
                 ) IS NULL, 0, 1) AS started,
 
@@ -415,7 +434,13 @@ class Uphill {
                     SELECT ts.time
                     FROM `timestamp` AS ts
                     WHERE ts.attemptId = attempt.attemptId
-                    AND ts.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.distance = 0 LIMIT 1)
+                    AND ts.checkpointId = (
+                        SELECT checkpoint.checkpointId
+                        FROM checkpoint
+                        WHERE checkpoint.order = 1
+                        AND checkpoint.routeId = IFNULL(attempt.routeId, -1)
+                        LIMIT 1
+                    )
                     LIMIT 1
                 ) AS startTime,
 
@@ -427,7 +452,7 @@ class Uphill {
                         AND `timestamp`.checkpointId = IFNULL((
                            SELECT checkpoint.checkpointId
                            FROM checkpoint
-                           WHERE checkpoint.routeId = attempt.routeId
+                           WHERE checkpoint.routeId = IFNULL(attempt.routeId, -1)
                            ORDER BY checkpoint.distance DESC
                            LIMIT 1
                         ), -1)
@@ -442,12 +467,21 @@ class Uphill {
                     AND `timestamp`.checkpointId = IFNULL((
                        SELECT checkpoint.checkpointId
                        FROM checkpoint
-                       WHERE checkpoint.routeId = attempt.routeId
+                       WHERE checkpoint.routeId = IFNULL(attempt.routeId, -1)
                        ORDER BY checkpoint.distance DESC
                        LIMIT 1
                     ), -1)
                     LIMIT 1
-                ) AS finishTime
+                ) AS finishTime,
+
+                IF((SELECT COUNT(*)
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                ) = (SELECT COUNT(*)
+                   FROM checkpoint
+                   WHERE checkpoint.routeId = IFNULL(attempt.routeId, 1)
+                ), 1, 0) AS completed
+
 
             FROM attempt
             WHERE attempt.sessionId = :sessionId
@@ -464,6 +498,7 @@ class Uphill {
             $row['category'] = (int)$row['category'];
             $row['started'] = !!$row['started'];
             $row['finished'] = !!$row['finished'];
+            $row['completed'] = !!$row['completed'];
             $row['endedByUser'] = !!$row['endedByUser'];
             $row['startTime'] = $row['startTime'] ? strtotime($row['startTime']) : null;
             $row['finishTime'] = $row['finishTime'] ? strtotime($row['finishTime']) : null;
@@ -481,7 +516,7 @@ class Uphill {
         $time = isset($_SERVER["REQUEST_TIME_FLOAT"]) ? (float)$_SERVER["REQUEST_TIME_FLOAT"] : microtime(true);
         $timestamp = (int)floor($time);
         $microtime = (int)round(($time - $timestamp) * 1000000);
-        $checkpointId = $this->_getCheckpointId($code);
+        $checkpointId = $this->_getCheckpointId($code, $attemptId);
 
         if (!$checkpointId) {
             throw new \Exception('Ungültiger Checkpoint');
@@ -493,7 +528,8 @@ class Uphill {
             FROM checkpoint
             INNER JOIN `timestamp` ON checkpoint.checkpointId = `timestamp`.checkpointId
             WHERE `timestamp`.attemptId = :attemptId
-            AND checkpoint.distance >= (SELECT cp.distance FROM checkpoint AS cp WHERE cp.checkpointId = :checkpointId)
+            AND checkpoint.`order` >= (SELECT cp.`order` FROM checkpoint AS cp WHERE cp.checkpointId = :checkpointId)
+            AND checkpoint.routeId = (SELECT cp.routeId FROM checkpoint AS cp WHERE cp.checkpointId = :checkpointId)
         ');
         $st->bindParam(':attemptId', $attemptId, \PDO::PARAM_INT);
         $st->bindParam(':checkpointId', $checkpointId, \PDO::PARAM_INT);
@@ -523,19 +559,38 @@ class Uphill {
     /**
      * checkpointId abfragen
      * @param string $code
+     * @param int $attemptId
      * @return int|null
      */
-    protected function _getCheckpointId(string $code): ?int {
-        $st = $this->_db->pdo()->prepare('SELECT checkpointId FROM checkpoint WHERE `code` = :code');
+    protected function _getCheckpointId(string $code, int $attemptId): ?int {
+        $st = $this->_db->pdo()->prepare('
+                SELECT
+                    checkpoint.checkpointId,
+
+                    IF((
+                        (SELECT attempt.routeId FROM attempt WHERE attempt.attemptId = :attemptId) IS NULL
+                        OR
+                        (SELECT attempt.routeId FROM attempt WHERE attempt.attemptId = :attemptId) = checkpoint.routeId
+                    ), 1, 0) AS checkpointFromRoute
+
+                FROM checkpoint
+                WHERE checkpoint.`code` = :code
+                ');
         $st->bindParam(':code', $code, \PDO::PARAM_STR);
+        $st->bindParam(':attemptId', $attemptId, \PDO::PARAM_INT);
         $st->execute();
         $row = $st->fetch(\PDO::FETCH_ASSOC);
         unset ($st);
+
+        if (!$row['checkpointFromRoute']) {
+            throw new \Exception('Der gescannte Checkpoint ist von einer anderen Route.');
+        }
+
         return $row && $row['checkpointId'] ? (int)$row['checkpointId'] : null;
     }
 
     protected function _isStartCheckpoint(string $code): bool {
-        $st = $this->_db->pdo()->prepare('SELECT checkpointId FROM checkpoint WHERE `code` = :code AND distance = 0');
+        $st = $this->_db->pdo()->prepare('SELECT checkpointId FROM checkpoint WHERE `code` = :code AND `order` = 1');
         $st->bindParam(':code', $code, \PDO::PARAM_STR);
         $st->execute();
         $row = $st->fetch(\PDO::FETCH_ASSOC);
@@ -548,7 +603,7 @@ class Uphill {
                 SELECT checkpoint.`code`
                 FROM checkpoint
                 WHERE checkpoint.routeId = (SELECT cp.routeId FROM checkpoint AS cp WHERE cp.`code` = :code LIMIT 1)
-                ORDER BY distance DESC
+                ORDER BY `order` DESC
                 LIMIT 1');
         $st->bindParam(':code', $code, \PDO::PARAM_STR);
         $st->execute();
@@ -559,17 +614,22 @@ class Uphill {
 
     /**
      * Setzt dem attempt die Route
-     * @param string $code
+     * @param int $attemptId
      * @return void
      */
-    protected function _setRouteId(string $code): void {
+    protected function _setRouteId(int $attemptId): void {
         $st = $this->_db->pdo()->prepare('
                 UPDATE attempt
-                SET attempt.routeId =
-                    (SELECT checkpoint.routeId FROM checkpoint WHERE checkpoint.`code` = :code LIMIT 1)
-                WHERE attempt.routeId IS NULL
+                SET attempt.routeId = (
+                    SELECT checkpoint.routeId
+                    FROM `timestamp`
+                    INNER JOIN `checkpoint` ON checkpoint.checkpointId = `timestamp`.checkpointId
+                    WHERE `timestamp`.attemptId = attempt.attemptId
+                    LIMIT 1
+                )
+                WHERE attempt.attemptId = :attemptId
             ');
-        $st->bindParam(':code', $code, \PDO::PARAM_STR);
+        $st->bindParam(':attemptId', $attemptId, \PDO::PARAM_INT);
         $st->execute();
     }
 
@@ -597,7 +657,8 @@ class Uphill {
                       AND subTimestamp.checkpointId = (
                          SELECT checkpoint.checkpointId
                          FROM checkpoint
-                         WHERE checkpoint.distance = 0
+                         WHERE checkpoint.`order` = 1
+                         AND checkpoint.routeId = IFNULL(attempt.routeId, -1)
                       )
                    )
                 ) AS walkTime
@@ -614,9 +675,10 @@ class Uphill {
             AND `timestamp`.checkpointId <> (
                SELECT startCp.checkpointId
                FROM checkpoint AS startCp
-               WHERE startCp.distance = 0
+               WHERE startCp.`order` = 1
+               AND startCp.routeId = checkpoint.routeId
             )
-            AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint)
+            AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint WHERE routeId = checkpoint.routeId)
 
             ORDER BY `walkTime` ASC
             LIMIT 1
@@ -665,8 +727,8 @@ class Uphill {
                       AND subTimestamp.checkpointId = (
                          SELECT checkpoint.checkpointId
                          FROM checkpoint
-                         WHERE checkpoint.distance = 0
-                         AND checkpoint.routeId = attempt.routeId
+                         WHERE checkpoint.`order` = 1
+                         AND checkpoint.routeId = IFNULL(attempt.routeId, -1)
                          LIMIT 1
                       )
                    )
@@ -677,7 +739,7 @@ class Uphill {
             INNER JOIN checkpoint ON `timestamp`.checkpointId = checkpoint.checkpointId
 
             WHERE checkpoint.checkpointId = :checkpointId
-             AND checkpoint.distance > 0
+             AND checkpoint.`order` > 1
              AND attempt.`email` = (SELECT curAttempt.`email` FROM attempt AS curAttempt WHERE curAttempt.attemptId = :currentAttemptId)
              AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint WHERE checkpoint.routeId = attempt.routeId)
 
@@ -739,7 +801,8 @@ class Uphill {
                ) IS NOT NULL, 1, 0) AS skipped
 
             FROM checkpoint
-            ORDER BY checkpoint.distance ASC;
+            WHERE checkpoint.`routeId` = IFNULL((SELECT attempt.routeId FROM attempt WHERE attempt.attemptId = :attemptId), -1)
+            ORDER BY checkpoint.`order` ASC;
         ');
         $st->bindParam(':attemptId', $attemptId, \PDO::PARAM_INT);
         $st->execute();
@@ -804,21 +867,36 @@ class Uphill {
                 str_pad((string)$seconds, 2, '0', STR_PAD_LEFT);
     }
 
-    protected function buildMailHtml(string $timeHtml, $data) {
-        $mailHtml = '<!DOCTYPE html>' . "\n";
+
+    protected function _sendMail(array $attempt) {
+        $html = $this->_buildMailHtml($this->_getTimeHtml($attempt), $attempt);
+
+        $headers = array();
+        $headers['Content-Type'] = 'text/html; charset=UTF-8';
+        $headers['Content-Transfer-Encoding'] = 'quoted-printable';
+        $headers['From'] = 'PDCS Uphill Challenge <info@pdcs.ch>';
+
+        mail($attempt['email'], 'PDCS Uphill Challenge: ' . $attempt['routeName'], quoted_printable_encode($html), $headers);
+    }
+
+
+    /**
+     * baut das HTML-Email auf.
+     * @param string $timeHtml
+     * @param array $data
+     * @return string
+     */
+    protected function _buildMailHtml(string $timeHtml, array $data) {
         $mailHtml .= '<html><head>';
         $mailHtml .= '<meta charset="UTF-8">';
 
         // css laden
-        $css = file_get_contents('../resources/css/main.css');
+        $css = file_get_contents('../resources/css/mail.css');
         $css = str_replace("\n", " ", $css);
         $cnt = 1;
         while ($cnt > 0) {
             $css = str_replace("  ", " ", $css, $cnt);
         }
-
-        $css = str_replace('..', 'https://uphill.pdcs.ch/resources', $css);
-
 
         $mailHtml .= '<style>';
         $mailHtml .= $css;
@@ -830,7 +908,9 @@ class Uphill {
 
 //        body main > div div.times
         $mailHtml .= '<main><div><div class="times">';
-        $mailHtml .= '<p>Vielen Dank für deine Teilnahme an der Möntschele Uphill Challenge. Nachfolgend deine Zeiten und die Rekordzeiten.</p>';
+        $mailHtml .= '<p>Vielen Dank für deine Teilnahme an der PDCS Uphill Challenge. Nachfolgend deine Zeiten und die Rekordzeiten.<br />';
+        $mailHtml .= 'Die Rangliste findest du auf unserer <a href="https://www.pdcs.ch/fluggebiet/moentschelen/uphill-challenge/">Webseite</a>.</p>';
+        $mailHtml .= '<p>Bis bald wieder auf der Möntschele!</p>';
         $mailHtml .= $timeHtml;
         $mailHtml .= '</div></div>';
         $mailHtml .= '</main></body></html>';

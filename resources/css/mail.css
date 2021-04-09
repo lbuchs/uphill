@@ -1,0 +1,47 @@
+ body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+     height: 40px;
+     background-color: #e8e8e8;
+     font-size: 1.1em;
+     font-weight: bold;
+     line-height: 40px;
+     padding: 20px;
+}
+
+main {
+    padding: 20px;
+}
+
+table {
+    width: 300px;
+}
+
+.turnpoint .name {
+    font-weight: bold;
+    margin: 20px 0 0 0;
+    padding: 0;
+}
+
+.turnpoint .detail {
+    font-size: 0.7em;
+    color: #4D4D4D;
+    margin: 0;
+    padding: 0;
+}
+
+.turnpoint td .name {
+    font-weight: normal;
+    font-size: 0.7em;
+    color: #4D4D4D;
+    margin: 0;
+    padding: 0;
+}
+
+table td {
+    border-bottom: 1px solid #969696;
+}
