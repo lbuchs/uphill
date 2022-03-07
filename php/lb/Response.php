@@ -23,7 +23,7 @@ class Response {
 
         if ($this->_data instanceof \Throwable) {
             $response->success = false;
-            $response->msg = $this->_data->getMessage();
+            $response->msg = $this->_data->getMessage() . "\n\n" . $this->_data->getTraceAsString();
             $response->data = null;
 
         } else {

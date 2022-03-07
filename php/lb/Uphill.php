@@ -167,19 +167,57 @@ class Uphill {
      */
     public function getRanking(): void {
         $routeId = (int)$this->_request->params()->routeId;
+        $season = isset($this->_request->params()->season) ? (int)$this->_request->params()->season : null;
+
+        $st = $this->_db->pdo()->prepare('SELECT checkpointId FROM checkpoint WHERE routeId = :routeId ORDER BY checkpoint.order ASC ');
+        $st->bindParam(':routeId', $routeId, \PDO::PARAM_INT);
+        $st->execute();
+        $cps = $st->fetchAll(\PDO::FETCH_ASSOC);
+        unset ($st);
+
+        $checkpointIds = [];
+        foreach ($cps as $cp) {
+            $checkpointIds[] = (int)$cp['checkpointId'];
+        }
+        $startCheckpointId = $checkpointIds ? $checkpointIds[0] : 0;
+        $goalCheckpointId = $checkpointIds ? $checkpointIds[count($checkpointIds)-1] : 0;
+
+        $tpSelect = '';
+
+        // für jede zwischenzeit eine Abfrage
+        for ($i= 1; $i < count($checkpointIds)-1; $i++) {
+            $tpSelect = '(
+                   SELECT `timestamp`.time
+                   FROM `timestamp`
+                   WHERE `timestamp`.attemptId = attempt.attemptId
+                   AND `timestamp`.checkpointId = ' . $checkpointIds[$i] . '
+                ) AS tp' . $i . '_time, ';
+        }
+
+        $seasonWhere = '';
+        if ($season === 0) { // nur aktuelle Saison
+            $seasonWhere = 'AND season.`start` <= CURDATE() AND season.`end` >= CURDATE()';
+
+        } else if (is_int($season)) { // Jahreszahl Saisonstart
+            $seasonWhere = 'AND YEAR(season.`start`) = ' . intval($season);
+        }
+
         $st = $this->_db->pdo()->prepare('
             SELECT
                 attempt.attemptId,
                 attempt.category,
+                (SELECT category.name FROM category WHERE category.categoryId = attempt.category) AS categoryName,
+                (SELECT category.shortcut FROM category WHERE category.categoryId = attempt.category) AS categoryShortcut,
                 attempt.gender,
                 CONCAT(attempt.name, \' \', attempt.familyname) AS fullname,
                 MD5(attempt.email) AS user,
+                season.name AS seasonName,
 
                 (
                    SELECT `timestamp`.time
                    FROM `timestamp`
                    WHERE `timestamp`.attemptId = attempt.attemptId
-                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 1)
+                   AND `timestamp`.checkpointId = :startCheckpointId
                 ) AS start_time,
 
                 (
@@ -201,23 +239,25 @@ class Uphill {
                    SELECT `timestamp`.time
                    FROM `timestamp`
                    WHERE `timestamp`.attemptId = attempt.attemptId
-                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 4)
+                   AND `timestamp`.checkpointId = :goalCheckpointId
                 ) AS goal_time,
 
                 (
                    SELECT UNIX_TIMESTAMP(`timestamp`.time)
                    FROM `timestamp`
                    WHERE `timestamp`.attemptId = attempt.attemptId
-                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 4)
+                   AND `timestamp`.checkpointId = :goalCheckpointId
                 ) - (
                    SELECT UNIX_TIMESTAMP(`timestamp`.time)
                    FROM `timestamp`
                    WHERE `timestamp`.attemptId = attempt.attemptId
-                   AND `timestamp`.checkpointId = (SELECT checkpoint.checkpointId FROM checkpoint WHERE checkpoint.routeId = attempt.routeId AND checkpoint.`order` = 1)
+                   AND `timestamp`.checkpointId = :startCheckpointId
                 ) AS walkTime
 
 
             FROM attempt
+
+            LEFT JOIN season ON season.`start` <= DATE(attempt.created) AND season.`end` >= DATE(attempt.created) AND season.routeId = attempt.routeId
 
             WHERE attempt.routeId = :routeId
             AND (
@@ -230,8 +270,12 @@ class Uphill {
                WHERE checkpoint.routeId = attempt.routeId
             )
 
+            ' . $seasonWhere . '
+
             ORDER BY walkTime ASC');
         $st->bindParam(':routeId', $routeId, \PDO::PARAM_INT);
+        $st->bindParam(':startCheckpointId', $startCheckpointId, \PDO::PARAM_INT);
+        $st->bindParam(':goalCheckpointId', $goalCheckpointId, \PDO::PARAM_INT);
         $st->execute();
         $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
         unset ($st);
@@ -239,20 +283,46 @@ class Uphill {
         $ranking = array();
         $categorys = array();
         foreach($rows as $row) {
-            $ranking[] = array(
+            $tmp = array(
+                'seasonName' => $row['seasonName'],
                 'attemptId' => (int)$row['attemptId'],
                 'category' => (int)$row['category'],
+                'categoryName' => $row['categoryName'],
+                'categoryShortcut' => $row['categoryShortcut'],
                 'gender' => $row['gender'],
                 'fullname' => $row['fullname'],
                 'user' => $row['user'],
                 'start' => strtotime($row['start_time']),
-                'tp1' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['tp1_time'])),
-                'tp2' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['tp2_time'])),
                 'goal' => '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['goal_time'])),
-                'walkTime' => (int)$row['walkTime']
+                'walkTime' => (int)$row['walkTime'],
+                'tpCount' => count($checkpointIds) -2 // Anzahl Zwischenzeiten
             );
 
-            $categorys[$row['gender'] . $row['category']] = 1;
+            // Zwischenzeiten
+            for ($i= 1; $i < count($checkpointIds)-1; $i++) {
+                $tmp['tp' . $i] = '+' . $this->_timeDiffString(strtotime($row['start_time']), strtotime($row['tp' .$i . '_time']));
+            }
+
+            $ranking[] = $tmp;
+
+            if (!array_key_exists('CAT_' . $row['category'], $categorys)) {
+                $categorys['CAT_' . $row['category']] = [
+                    'category' => (int)$row['category'],
+                    'categoryName' => $row['categoryName'],
+                    'categoryShortcut' => $row['categoryShortcut']
+                ];
+            }
+
+            // Kategorie Frauen
+            if ($row['gender'] === 'W') {
+                if (!array_key_exists('CAT_W', $categorys)) {
+                    $categorys['CAT_W'] = [
+                        'category' => null,
+                        'categoryName' => 'Damen',
+                        'categoryShortcut' => null
+                    ];
+                }
+            }
         }
 
         // Rückgabe
@@ -296,11 +366,13 @@ class Uphill {
 
             $html .= '<table>';
 
-            $categoryName = '';
-            switch ($attempt['category']) {
-                case 1: $categoryName = 'Fussgänger'; break;
-                case 2: $categoryName = 'Leichtausrüstung'; break;
-                case 3: $categoryName = 'Sherpa'; break;
+            $categoryName = $attempt['categoryName'];
+            if (!$categoryName) {
+                switch ($attempt['category']) {
+                    case 1: $categoryName = 'Fussgänger'; break;
+                    case 2: $categoryName = 'Leichtausrüstung'; break;
+                    case 3: $categoryName = 'Sherpa'; break;
+                }
             }
 
             // Eigene Zeit
@@ -355,6 +427,8 @@ class Uphill {
                 $html .= '</tr>';
             }
 
+            // TODO: Jahresbestzeit / Saisonbestzeit
+
             // Absolute Bestzeit
             if ($alltimeBest) {
                 $html .= '<tr>';
@@ -404,6 +478,11 @@ class Uphill {
             SELECT
                 attempt.attemptId,
                 attempt.category,
+                (SELECT category.name FROM category WHERE category.categoryId = attempt.category LIMIT 1) AS categoryName,
+                (SELECT route.challengeName FROM route WHERE route.routeId = attempt.routeId LIMIT 1) AS challengeName,
+                (SELECT route.organizer FROM route WHERE route.routeId = attempt.routeId LIMIT 1) AS organizer,
+                (SELECT route.rankingUrl FROM route WHERE route.routeId = attempt.routeId LIMIT 1) AS rankingUrl,
+
                 attempt.gender,
                 attempt.`name`,
                 attempt.`familyname`,
@@ -781,10 +860,17 @@ class Uphill {
                   FROM `timestamp`
                   WHERE `timestamp`.checkpointId = checkpoint.checkpointId
                   AND `timestamp`.attemptId = :attemptId
+                  LIMIT 1
                ),(
                   SELECT `timestamp`.`time`
                   FROM `timestamp`
-                  WHERE `timestamp`.checkpointId = (SELECT cp.checkpointId FROM checkpoint AS cp WHERE cp.distance = 0)
+                  WHERE `timestamp`.checkpointId = (
+                        SELECT cp.checkpointId
+                        FROM checkpoint AS cp
+                        WHERE cp.order = 1
+                        AND cp.routeId = route.routeId
+                        LIMIT 1
+                    )
                   AND `timestamp`.attemptId = :attemptId
                )) AS userTime,
 
@@ -793,15 +879,23 @@ class Uphill {
                   FROM `timestamp`
                   WHERE `timestamp`.checkpointId = checkpoint.checkpointId
                   AND `timestamp`.attemptId = :attemptId
+                  LIMIT 1
                ) IS NULL AND (
                   SELECT `timestamp`.`timestampId`
                   FROM `timestamp`
-                  WHERE `timestamp`.checkpointId IN (SELECT cp.checkpointId FROM checkpoint AS cp WHERE cp.distance > checkpoint.distance)
+                  WHERE `timestamp`.checkpointId IN (
+                        SELECT cp.checkpointId
+                        FROM checkpoint AS cp
+                        WHERE cp.order > checkpoint.order
+                        AND cp.routeId = route.routeId
+                    )
                   AND `timestamp`.attemptId = :attemptId
+                  LIMIT 1
                ) IS NOT NULL, 1, 0) AS skipped
 
             FROM checkpoint
-            WHERE checkpoint.`routeId` = IFNULL((SELECT attempt.routeId FROM attempt WHERE attempt.attemptId = :attemptId), -1)
+            INNER JOIN route ON checkpoint.routeId = route.routeId
+            WHERE route.`routeId` = IFNULL((SELECT attempt.routeId FROM attempt WHERE attempt.attemptId = :attemptId), -1)
             ORDER BY checkpoint.`order` ASC;
         ');
         $st->bindParam(':attemptId', $attemptId, \PDO::PARAM_INT);
@@ -876,7 +970,8 @@ class Uphill {
         $headers['Content-Transfer-Encoding'] = 'quoted-printable';
         $headers['From'] = 'PDCS Uphill Challenge <info@pdcs.ch>';
 
-        mail($attempt['email'], 'PDCS Uphill Challenge: ' . $attempt['routeName'], quoted_printable_encode($html), $headers);
+        $subject = $attempt['organizer'] . ' ' . $attempt['challengeName'] . ': ' . $attempt['routeName'];
+        mail($attempt['email'], $subject, quoted_printable_encode($html), $headers);
     }
 
 
@@ -908,9 +1003,16 @@ class Uphill {
 
 //        body main > div div.times
         $mailHtml .= '<main><div><div class="times">';
-        $mailHtml .= '<p>Vielen Dank für deine Teilnahme an der PDCS Uphill Challenge. Nachfolgend deine Zeiten und die Rekordzeiten.<br />';
-        $mailHtml .= 'Die Rangliste findest du auf unserer <a href="https://www.pdcs.ch/fluggebiet/moentschelen/uphill-challenge/">Webseite</a>.</p>';
-        $mailHtml .= '<p>Bis bald wieder auf der Möntschele!</p>';
+        $mailHtml .= '<p>Vielen Dank für deine Teilnahme an der ' . htmlspecialchars($data['challengeName']) .'. ';
+        $mailHtml .= 'Nachfolgend deine Zeiten und die Rekordzeiten.<br />';
+
+        if ($data['rankingUrl']) {
+            $mailHtml .= 'Die Rangliste findest du auf unserer <a href="' . htmlspecialchars($data['rankingUrl']) . '">Webseite</a>.';
+        }
+        $mailHtml .= '</p>';
+
+        $mailHtml .= '<p>Bis zum nächsten Versuch!<br />';
+        $mailHtml .= htmlspecialchars($data['organizer']) . '</p>';
         $mailHtml .= $timeHtml;
         $mailHtml .= '</div></div>';
         $mailHtml .= '</main></body></html>';

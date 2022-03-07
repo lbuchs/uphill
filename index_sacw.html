@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!--
+Copyright © 2021 Lukas Buchs
+licensed under the MIT License: https://github.com/lbuchs/uphill
+-->
+<html>
+    <head>
+        <title>SAC Wildstrubel - Fläckli Challenge</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+        <link rel="stylesheet" type="text/css" href="https://qr-time.lubu.ch/resources/css/main_sacw.css" />
+        <script type="text/javascript" src="https://qr-time.lubu.ch/js/main_sacw.js?v=2.0"></script>
+        <script type="text/javascript" src="https://qr-time.lubu.ch/resources/lib/jsqr/jsQR.js"></script>
+
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="referrer" content="no-referrer" />
+        <link rel="shortcut icon" type="image/x-icon" href="https://www.sac-wildstrubel.ch/daten/logo/haslital.ico">
+
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+
+                // force https
+                if (location.protocol !== 'https:') {
+                    location.replace('https:' + location.href.substring(location.protocol.length));
+                } else {
+                    new Main();
+                }
+            });
+        </script>
+    </head>
+    <body>
+        <header>
+            Fläckli Challenge
+        </header>
+        <main>
+            <div>
+                Content
+            </div>
+        </main>
+        <div class="timer">
+            <span class="hour">00</span>
+            <span class="separator">:</span>
+            <span class="minute">00</span>
+            <span class="separator">:</span>
+            <span class="second">00</span>
+        </div>
+        <footer>
+            SAC Sektion Wildstrubel
+        </footer>
+    </body>
+</html>

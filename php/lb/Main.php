@@ -28,11 +28,12 @@ class Main {
         // Error Reporting komplett abschalten
         error_reporting(0);
 
-        $this->_startSession();
 
         $this->_request = new Request();
         $this->_response = new Response();
         $this->_db = new Db();
+
+        $this->_startSession();
     }
 
     // ----------------------------------
@@ -44,12 +45,36 @@ class Main {
 
             $forbidden = false;
             if (filter_input(INPUT_SERVER, 'HTTP_ORIGIN')) {
-                $whitelist = ['pdcs.ch', 'www.pdcs.ch', 'uphill.pdcs.ch', 'www.uphill.pdcs.ch', 'localhost', '127.0.0.1'];
+                $whitelist = [
+                    '*.lubu.ch',
+                    'pdcs.ch',
+                    '*.pdcs.ch',
+                    'sac-wildstrubel.ch',
+                    '*.sac-wildstrubel.ch',
+                    'localhost',
+                    '127.0.0.1'
+                ];
 
-                if (in_array(parse_url(filter_input(INPUT_SERVER, 'HTTP_ORIGIN'), PHP_URL_HOST), $whitelist)) {
+                $requestDomain = mb_strtolower(parse_url(filter_input(INPUT_SERVER, 'HTTP_ORIGIN'), PHP_URL_HOST));
+
+                $accept = false;
+                foreach ($whitelist as $whitelistDomain) {
+                    $pattern = str_replace('%%%', '.*', preg_quote(str_replace('*', '%%%', $whitelistDomain), '/'));
+                    if (preg_match('/^' . $pattern . '$/i', $requestDomain)) {
+                        $accept = true;
+                        break;
+                    }
+                }
+
+                if ($accept) {
                     header('Access-Control-Allow-Origin: ' . filter_input(INPUT_SERVER, 'HTTP_ORIGIN'));
                     header('Access-Control-Allow-Methods: POST');
                     header('Access-Control-Allow-Headers: Content-Type');
+                    header('Access-Control-Allow-Credentials: true');
+
+                    if ($this->_request->method() === 'OPTIONS') {
+                        header('Access-Control-Max-Age: ' . (3600*24));
+                    }
 
                 } else {
                     header($_SERVER["SERVER_PROTOCOL"]." 403 Forbidden");
@@ -59,8 +84,8 @@ class Main {
 
             // bots forbidden
             if (preg_match('/bot\b|index|spider|crawl|wget|slurp|Mediapartners-Google/i', filter_input(INPUT_SERVER, 'HTTP_USER_AGENT'))) {
-                    header($_SERVER["SERVER_PROTOCOL"]." 403 Forbidden");
-                    $forbidden = true;
+                header($_SERVER["SERVER_PROTOCOL"]." 403 Forbidden");
+                $forbidden = true;
             }
 
             if ($this->_request->method() === 'POST' && !$forbidden) {
@@ -97,8 +122,16 @@ class Main {
             'path' => '/',
             'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
             'httponly' => true,
-            'samesite' => 'Lax'
+            'samesite' => 'None'
         ]);
+
+        // Session-ID übergeben
+        if ($this->_request->sessionId()) {
+            session_id($this->_request->sessionId());
+        } else {
+            session_id('nft' . time());
+        }
+
         session_start();
     }
 }

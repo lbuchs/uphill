@@ -21,7 +21,11 @@ class Db {
      */
     public function pdo(): \PDO {
         if ($this->_pdo === null) {
-            $this->_pdo = new \PDO(UH_DB_DSN, UH_DB_USER, UH_DB_PASSWORD, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+            try {
+                $this->_pdo = new \PDO(UH_DB_DSN, UH_DB_USER, UH_DB_PASSWORD, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+            } catch (\PDOException $ex) {
+                throw new \Exception('Datenbankverbindung fehlgeschlagen.');
+            }
         }
         return $this->_pdo;
     }

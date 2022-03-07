@@ -4,9 +4,10 @@
 
 class Ranking {
 
-    constructor(routeId) {
+    constructor(routeId, season, domElementId) {
         this._routeId = routeId;
-        this._container = document.getElementById('ranking');
+        this._season = season === null ? (new Date()).getFullYear() : season;
+        this._container = document.getElementById(domElementId ? domElementId : 'ranking');
         this._data = {};
         if (this._container) {
             this.getData().then((data) => {
@@ -16,18 +17,15 @@ class Ranking {
                 window.alert(e.message || 'Es ist ein Fehler aufgetreten.');
             });
         }
-
     }
 
-
-
     async getData() {
-        let data = await fetch('https://uphill.pdcs.ch/php/api.php', {
+        let data = await fetch('https://qr-time.lubu.ch/php/api.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({action:"getRanking", params:{routeId:this._routeId}})
+            body: JSON.stringify({action:"getRanking", params:{routeId:this._routeId, season: this._season }})
         });
 
         data = await data.json();
@@ -42,26 +40,24 @@ class Ranking {
 
 
     buildHtml(data) {
+
+        // Gesammt-Rangliste
         this.buildTitle('Gesamtrangliste');
         this.buildTable(data.ranking, null, null, null, true);
 
-        if (data.categorys.M1 || data.categorys.F1) {
-            this.buildTitle('Kategorie Fussgänger');
-            this.buildTable(data.ranking, 1);
+        // Kategorien Rangliste
+        for (let catName in data.categorys) {
+            if (catName !== 'CAT_W') {
+                let cat = data.categorys[catName];
+
+                this.buildTitle('Kategorie ' + cat.categoryName);
+                this.buildTable(data.ranking, cat.category);
+            }
         }
 
-        if (data.categorys.M2 || data.categorys.F2) {
-            this.buildTitle('Kategorie Leichtausrüstung');
-            this.buildTable(data.ranking, 2);
-        }
-
-        if (data.categorys.M3 || data.categorys.F3) {
-            this.buildTitle('Kategorie Sherpa (>8 Kg)');
-            this.buildTable(data.ranking, 3);
-        }
-
-        if (data.categorys.F1 || data.categorys.F2 || data.categorys.F3) {
-            this.buildTitle('Kategorie Damen');
+        // Frauen-Rangliste
+        if (data.categorys.CAT_W) {
+            this.buildTitle('Kategorie ' + data.categorys.CAT_W.categoryName);
             this.buildTable(data.ranking, null, 'W', null, true);
         }
 
@@ -123,11 +119,13 @@ class Ranking {
             row.className = 'category_' + rank.category + ' gender_' + rank.gender.toLowerCase();
 
             // Kat. Bez
-            let ct = '';
-            switch (rank.category) {
-                case 1: ct = 'F'; break;
-                case 2: ct = 'L'; break;
-                case 3: ct = 'S'; break;
+            let ct = rank.categoryShortcut;
+            if (!ct) {
+                switch (rank.category) {
+                    case 1: ct = 'F'; break;
+                    case 2: ct = 'L'; break;
+                    case 3: ct = 'S'; break;
+                }
             }
 
             place++;

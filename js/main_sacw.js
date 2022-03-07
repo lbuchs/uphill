@@ -207,8 +207,8 @@ class Main {
         let familyname = data.familyname ? data.familyname : '';
         let email = data.email ? data.email : '';
 
-        html += '<h1>Willkommen bei der Möntschele Uphill Challenge!</h1>';
-        html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stoppuhr, um zu sehen, wie lange du für die 665 Höhenmeter benötigst.</p>';
+        html += '<h1>Willkommen bei der Fläckli Challenge!</h1>';
+        html += '<p>Vergleiche deine Zeit mit anderen oder nutze einfach die Stoppuhr, um zu sehen, wie lange du für die 579 Höhenmeter benötigst.</p>';
 
         html += '<div class="slider">';
         html += '<h2>So gehts</h2>';
@@ -216,10 +216,10 @@ class Main {
         html += '<ol>';
         html += '<li>Fülle das Formular aus und drücke «Bereitmachen».</li>';
         html += '<li>Wenn du laufbereit bist, scanne den Start-QR-Code und laufe los.</li>';
-        html += '<li>Nach der Spittelweide, nach dem Tor im Zaun, ist die erste Zwischenzeit. Scanne den QR-Code und laufe weiter.</li>';
-        html += '<li>Beim Bänkli im Möntschelewald ist die zweite Zwischenzeit. Scanne den QR-Code und laufe weiter.</li>';
-        html += '<li>Oben beim Startplatz ist das Ziel. Scanne den QR-Code, um die Zeitmessung abzuschliessen.</li>';
-        html += '<li>Guten Flug!</li>';
+        html += '<li>Beim Schönebode ist die erste Zwischenzeit. Scanne den QR-Code und laufe weiter.</li>';
+        html += '<li>Bei der Wengi ist die zweite Zwischenzeit. Scanne den QR-Code und laufe weiter.</li>';
+        html += '<li>Oben beim Fläckli ist das Ziel. Scanne den QR-Code, um die Zeitmessung abzuschliessen.</li>';
+        html += '<li>Gute Abfahrt!</li>';
         html += '</ol>';
         html += '</div>';
 
@@ -243,9 +243,9 @@ class Main {
 
         html += '<div class="formEl radioEl">';
         html += '<p>Ausrüstung</p>';
-        html += '<label><input type="radio" name="category" value="1" required>Ohne Gleitschirm</label><br>';
-        html += '<label><input type="radio" name="category" value="2" required>Leichtausrüstung</label><br>';
-        html += '<label><input type="radio" name="category" value="3" required>Sherpa (> 8kg)</label>';
+        html += '<label><input type="radio" name="category" value="4" required>Ski</label><br>';
+        html += '<label><input type="radio" name="category" value="5" required>Schneeschuhe</label><br>';
+        html += '<label><input type="radio" name="category" value="6" required>Splitboard</label>';
         html += '</div>';
 
         html += '<div class="formEl submitEl">';

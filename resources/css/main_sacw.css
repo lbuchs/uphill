@@ -1,0 +1,306 @@
+/*
+Copyright © 2020 Lukas Buchs
+*/
+@font-face {
+  font-family: Roboto;
+  src: url(../font/Roboto-Regular.ttf);
+  font-weight: normal;
+}
+@font-face {
+  font-family: Roboto;
+  src: url(../font/Roboto-Bold.ttf);
+  font-weight: bold;
+}
+@font-face {
+  font-family: Roboto;
+  src: url(../font/Roboto-BoldItalic.ttf);
+  font-weight: bold;
+  font-style: italic;
+}
+@font-face {
+  font-family: Roboto;
+  src: url(../font/Roboto-Italic.ttf);
+  font-weight: normal;
+  font-style: italic;
+}
+@font-face {
+  font-family: RobotoMedium;
+  src: url(../font/Roboto-Medium.ttf);
+  font-weight: normal;
+}
+@font-face {
+  font-family: RobotoLight;
+  src: url(../font/Roboto-Light.ttf);
+  font-weight: normal;
+}
+@font-face {
+  font-family: RobotoLight;
+  src: url(../font/Roboto-LightItalic.ttf);
+  font-weight: normal;
+  font-style: italic;
+}
+* {
+  margin: 0;
+  padding: 0;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 1.05rem;
+  border-collapse: collapse;
+  color: #191919;
+}
+h1,
+h2,
+h3 {
+  font-family: RobotoLight, Arial, sans-serif;
+  font-weight: normal;
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+}
+h2,
+h3 {
+  font-size: 1.4rem;
+}
+button {
+  font-family: RobotoMedium, Arial, sans-serif;
+}
+body {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  align-content: stretch;
+}
+body header {
+  height: 20px;
+  background-color: #e8e8e8;
+  background-image: url("../img/logo_sacw.svg");
+  background-size: 120px;
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  font-size: 1.1em;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 20px;
+}
+body div.timer {
+  flex: 1;
+  min-height: 50px;
+  border-top: 1px solid #f3f3f3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  background-color: #fcfcfc;
+}
+body div.timer > span {
+  font-size: 46px;
+  font-family: RobotoLight, Arial, sans-serif;
+  width: 55px;
+  text-align: center;
+}
+body div.timer > span.separator {
+  width: 10px;
+}
+body main {
+  flex: 5;
+  padding: 20px;
+  overflow: auto;
+}
+body main > div {
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  flex-direction: column;
+}
+body main > div div.loader {
+  border: 10px solid #f3f3f3;
+  /* Light grey */
+  border-top: 10px solid #3498db;
+  /* Blue */
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 2s linear infinite;
+}
+body main > div form ol {
+  padding-left: 30px;
+}
+body main > div form ol > li {
+  padding-bottom: 6px;
+}
+body main > div form > div.formEl {
+  margin: 10px 0 17px 0;
+}
+body main > div form > div.formEl.textEl {
+  display: flex;
+}
+body main > div form > div.formEl.textEl > label {
+  flex: 1;
+  line-height: 28px;
+  font-size: 0.9em;
+}
+body main > div form > div.formEl.textEl > input {
+  flex: 3;
+  border: 0;
+  border-left: 1px solid grey;
+  border-bottom: 1px solid grey;
+  line-height: 20px;
+  font-size: 0.9em;
+  padding: 4px;
+}
+body main > div form > div.formEl.radioEl p {
+  font-weight: bold;
+}
+body main > div form > div.formEl.radioEl input {
+  margin: 8px 5px;
+}
+body main > div form > div.formEl.submitEl input {
+  font-family: RobotoMedium, Arial, sans-serif;
+  text-transform: uppercase;
+  padding: 10px;
+  background-color: #2ecc71;
+  color: #ecf0f1;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: 1px 1px 2px 1px rgba(91, 91, 91, 0.28);
+}
+body main > div button.qr-code-scan {
+  background: #3498db;
+  background-image: linear-gradient(to bottom, #3498db, #2980b9);
+  border-radius: 11px;
+  border: 0;
+  font-family: RobotoMedium, Arial, sans-serif;
+  color: #ffffff;
+  font-size: 19px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+body main > div button.qr-code-scan:hover {
+  background: #3cb0fd;
+  background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+  text-decoration: none;
+}
+body main > div canvas.qrScanner {
+  background-color: royalblue;
+}
+body main > div div.slider {
+  position: relative;
+  margin: 8px 0 30px 0;
+  padding: 3px;
+  border: 1px solid white;
+  box-shadow: 1px 1px 2px 1px rgba(91, 91, 91, 0.28);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 26px;
+  transition: height 1s;
+}
+body main > div div.slider h2 {
+  margin: 0px 0 7px 3px;
+}
+body main > div div.slider:hover {
+  height: 460px;
+}
+body main > div div.slider .plusSign {
+  background-color: #c4c4c4;
+  color: #ecf0f1;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  border-radius: 50%;
+  top: 5px;
+  right: 5px;
+  text-align: center;
+  line-height: 20px;
+}
+body main > div div.ready {
+  text-align: center;
+}
+body main > div div.ready h1 {
+  margin-bottom: 20px;
+}
+body main > div div.scan-result {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  flex-direction: column;
+  border-radius: 20px;
+}
+body main > div div.scan-result > div > h1 {
+  font-size: 100px;
+  font-weight: bold;
+  text-align: center;
+}
+body main > div div.scan-result > div > p {
+  text-align: center;
+  font-weight: bold;
+}
+body main > div div.times {
+  width: 100%;
+}
+body main > div div.times div.turnpoint {
+  padding: 20px 0;
+  border-bottom: 1px solid grey;
+}
+body main > div div.times div.turnpoint > p.name {
+  font-weight: bold;
+}
+body main > div div.times div.turnpoint > p.detail {
+  font-family: RobotoLight, Arial, sans-serif;
+  font-size: 0.7em;
+  color: #666666;
+}
+body main > div div.times div.turnpoint > table {
+  margin-top: 4px;
+  width: 100%;
+}
+body main > div div.times div.turnpoint > table tr td {
+  padding-bottom: 4px;
+}
+body main > div div.times div.turnpoint > table tr td,
+body main > div div.times div.turnpoint > table tr td p {
+  font-size: 15px;
+}
+body main > div div.times div.turnpoint > table tr td:nth-child(2),
+body main > div div.times div.turnpoint > table tr td:nth-child(3) {
+  width: 80px;
+  text-align: right;
+  vertical-align: top;
+}
+body main > div div.times div.turnpoint > table tr td.skipped {
+  color: red;
+}
+body main > div div.times div.turnpoint > table tr td.slower {
+  color: #e60000;
+}
+body main > div div.times div.turnpoint > table tr td.faster {
+  color: #00e602;
+}
+body main > div div.times div.turnpoint > table tr td p.name {
+  font-family: RobotoLight, Arial, sans-serif;
+  font-size: 0.7em;
+  color: #666666;
+}
+body footer {
+  height: 20px;
+  background-color: #e8e8e8;
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 20px;
+  padding: 20px;
+  text-align: center;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+/*# sourceMappingURL=main_sacw.css.map */

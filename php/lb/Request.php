@@ -11,6 +11,7 @@ class Request {
     protected $_method = '';
     protected $_action = '';
     protected $_params;
+    protected $_sessionId;
 
     public function __construct() {
 
@@ -26,6 +27,9 @@ class Request {
             if (\is_object($input) && isset($input->params)) {
                 $this->_params = $input->params;
             }
+            if (\is_object($input) && isset($input->sessionId)) {
+                $this->_sessionId = $input->sessionId;
+            }
         }
     }
 
@@ -39,5 +43,9 @@ class Request {
 
     public function params() {
         return $this->_params;
+    }
+
+    public function sessionId() {
+        return $this->_sessionId;
     }
 }
