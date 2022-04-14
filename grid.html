@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--
+Copyright © 2020 Lukas Buchs, netas.ch
+-->
+<html>
+    <head>
+        <title>TODO supply a title</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div>TODO write content</div>
+
+        <style>
+            .gender_all tr.gender_w {
+                color: #990099;
+            }
+
+            #ranking tr td:last-child {
+                font-weight: bold;
+            }
+
+            #ranking td.userLink {
+                cursor: pointer;
+            }
+            #ranking td.userLink:hover {
+                text-decoration: underline;
+            }
+
+        </style>
+
+        <script src="https://qr-time.lubu.ch/js/ranking.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+               new Ranking(1);
+            });
+        </script>
+        <div id="ranking"></div>
+    </body>
+</html>
+

@@ -42,7 +42,7 @@ class Ranking {
     buildHtml(data) {
 
         // Gesammt-Rangliste
-        this.buildTitle('Gesamtrangliste');
+        this.buildTitle(data.title || 'Gesamtrangliste');
         this.buildTable(data.ranking, null, null, null, true);
 
         // Kategorien Rangliste

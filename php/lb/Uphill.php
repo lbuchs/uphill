@@ -282,6 +282,7 @@ class Uphill {
 
         $ranking = array();
         $categorys = array();
+        $title = $seasonWhere ? '' : 'Gesamtrangliste';
         foreach($rows as $row) {
             $tmp = array(
                 'seasonName' => $row['seasonName'],
@@ -323,12 +324,18 @@ class Uphill {
                     ];
                 }
             }
+
+            // Titel
+            if (!$title) {
+                $title = $row['seasonName'];
+            }
         }
 
         // Rückgabe
         $return = new \stdClass();
         $return->ranking = $ranking;
         $return->categorys = $categorys;
+        $return->title = $title;
         $this->_response->set($return);
     }
 
@@ -344,10 +351,12 @@ class Uphill {
         $altitude = null;
 
         foreach ($checkpoints as $checkpoint) {
-            $alltimeBest = $this->_getAlltimeBest($checkpoint['checkpointId']);
+            $alltimeBest = $this->_getCheckpointBest($checkpoint['checkpointId']);
+            $saisonBest =  $this->_getCheckpointBest($checkpoint['checkpointId'], null, null, true);
             $userBest = $this->_getUserBest($checkpoint['checkpointId'], $attempt['attemptId']);
-            $womanBest = $attempt['gender'] === 'W' ? $this->_getAlltimeBest($checkpoint['checkpointId'], 'W') : [];
-            $categoryBest = $this->_getAlltimeBest($checkpoint['checkpointId'], null, $attempt['category']);
+            $womanBest = $attempt['gender'] === 'W' ? $this->_getCheckpointBest($checkpoint['checkpointId'], 'W') : [];
+            $womanSaisonBest = $attempt['gender'] === 'W' ? $this->_getCheckpointBest($checkpoint['checkpointId'], 'W', null, true) : [];
+            $categoryBest = $this->_getCheckpointBest($checkpoint['checkpointId'], null, $attempt['category']);
 
             // Differenz Höhe anzeigen
             $altiStr = '';
@@ -377,7 +386,7 @@ class Uphill {
 
             // Eigene Zeit
             $html .= '<tr>';
-            $html .= '<td><p>Deine Zeit</p></td>';
+            $html .= '<td><p>Deine Zeit:</p></td>';
             if ($checkpoint['userTime']) {
                 $html .= '<td>' . htmlspecialchars($checkpoint['userTime']) . '</td>';
             } else if ($checkpoint['skipped']) {
@@ -414,6 +423,19 @@ class Uphill {
                 $html .= '</tr>';
             }
 
+            // Frauen Bestzeit
+            if ($womanSaisonBest) {
+                $html .= '<tr>';
+                $html .= '<td><p>Frauen Saison Bestzeit</p><p class="name">Von ' . htmlspecialchars($womanSaisonBest->name) . '</p></td>';
+                $html .= '<td>' . htmlspecialchars($womanSaisonBest->walkTime) . '</td>';
+                if ($checkpoint['userTime']) {
+                    $html .= $this->_timeDiff($womanSaisonBest->walkTime, $checkpoint['userTime'], 'td'); // differenz
+                } else {
+                    $html .= '<td>--:--:--</td>';
+                }
+                $html .= '</tr>';
+            }
+
             // Kategorie Bestzeit
             if ($categoryBest) {
                 $html .= '<tr>';
@@ -427,7 +449,18 @@ class Uphill {
                 $html .= '</tr>';
             }
 
-            // TODO: Jahresbestzeit / Saisonbestzeit
+            // Saisonbestzeit
+            if ($saisonBest) {
+                $html .= '<tr>';
+                $html .= '<td><p>Saison Bestzeit</p><p class="name">Von ' . htmlspecialchars($saisonBest->name) . '</p></td>';
+                $html .= '<td>' . htmlspecialchars($saisonBest->walkTime) . '</td>';
+                if ($checkpoint['userTime']) {
+                    $html .= $this->_timeDiff($saisonBest->walkTime, $checkpoint['userTime'], 'td'); // differenz
+                } else {
+                    $html .= '<td>--:--:--</td>';
+                }
+                $html .= '</tr>';
+            }
 
             // Absolute Bestzeit
             if ($alltimeBest) {
@@ -719,14 +752,16 @@ class Uphill {
      * @param int|null $category
      * @return \stdClass|null
      */
-    protected function _getAlltimeBest(int $checkpointId, ?string $gender=null, ?int $category=null): ?\stdClass {
+    protected function _getCheckpointBest(int $checkpointId, ?string $gender=null, ?int $category=null, $curSaison=false): ?\stdClass {
 
         $genderWhere = $gender === null ? '' : 'AND attempt.gender = :gender';
         $categoryWhere = $category === null ? '' : 'AND attempt.category = :category';
+        $saisonWhere = $curSaison ? 'AND season.`start` <= CURDATE() AND season.`end` >= CURDATE()' : '';
 
         $st = $this->_db->pdo()->prepare('
             SELECT
                 CONCAT(attempt.`name`, \' \', attempt.`familyname`) AS `name`,
+                season.`name` AS seasonName,
                 TIMEDIFF(
                    `timestamp`.`time`,
                    (
@@ -734,10 +769,10 @@ class Uphill {
                       FROM `timestamp` AS subTimestamp
                       WHERE subTimestamp.attemptId = attempt.attemptId
                       AND subTimestamp.checkpointId = (
-                         SELECT checkpoint.checkpointId
-                         FROM checkpoint
-                         WHERE checkpoint.`order` = 1
-                         AND checkpoint.routeId = IFNULL(attempt.routeId, -1)
+                         SELECT cp.checkpointId
+                         FROM checkpoint AS cp
+                         WHERE cp.`order` = 1
+                         AND cp.routeId = IFNULL(attempt.routeId, -1)
                       )
                    )
                 ) AS walkTime
@@ -745,19 +780,17 @@ class Uphill {
             FROM `attempt`
             INNER JOIN `timestamp` ON `timestamp`.attemptId = `attempt`.attemptId
             INNER JOIN checkpoint ON `timestamp`.checkpointId = checkpoint.checkpointId
+            INNER JOIN season ON `attempt`.routeId = season.routeId AND season.`start` <= DATE(attempt.created) AND season.`end` >= DATE(attempt.created)
 
             WHERE checkpoint.checkpointId = :checkpointId
             AND attempt.`name` <> \'\'
             AND attempt.`email` <> \'\'
             ' . $genderWhere . '
             ' . $categoryWhere . '
-            AND `timestamp`.checkpointId <> (
-               SELECT startCp.checkpointId
-               FROM checkpoint AS startCp
-               WHERE startCp.`order` = 1
-               AND startCp.routeId = checkpoint.routeId
-            )
-            AND (SELECT COUNT(*) FROM `timestamp` WHERE `timestamp`.attemptId = attempt.attemptId) = (SELECT COUNT(*) FROM checkpoint WHERE routeId = checkpoint.routeId)
+            ' . $saisonWhere . '
+            AND checkpoint.`order` <> 1
+            AND (SELECT COUNT(*) FROM `timestamp` AS `tp` WHERE `tp`.attemptId = attempt.attemptId)
+                = (SELECT COUNT(*) FROM checkpoint AS cp WHERE cp.routeId = checkpoint.routeId)
 
             ORDER BY `walkTime` ASC
             LIMIT 1
@@ -904,12 +937,13 @@ class Uphill {
         unset ($st);
 
         // types
-        foreach ($rows as $row) {
+        foreach ($rows as &$row) {
             $row['checkpointId'] = (int)$row['checkpointId'];
             $row['distance'] = (int)$row['distance'];
             $row['altitude'] = (int)$row['altitude'];
             $row['skipped'] = !!$row['skipped'];
         }
+        unset ($row);
 
         return $rows;
     }
