@@ -426,7 +426,7 @@ class Uphill {
             // Frauen Bestzeit
             if ($womanSaisonBest) {
                 $html .= '<tr>';
-                $html .= '<td><p>Frauen Saison Bestzeit</p><p class="name">Von ' . htmlspecialchars($womanSaisonBest->name) . '</p></td>';
+                $html .= '<td><p>Frauen ' . htmlspecialchars($womanSaisonBest->seasonName) . ' Bestzeit</p><p class="name">Von ' . htmlspecialchars($womanSaisonBest->name) . '</p></td>';
                 $html .= '<td>' . htmlspecialchars($womanSaisonBest->walkTime) . '</td>';
                 if ($checkpoint['userTime']) {
                     $html .= $this->_timeDiff($womanSaisonBest->walkTime, $checkpoint['userTime'], 'td'); // differenz
@@ -452,7 +452,7 @@ class Uphill {
             // Saisonbestzeit
             if ($saisonBest) {
                 $html .= '<tr>';
-                $html .= '<td><p>Saison Bestzeit</p><p class="name">Von ' . htmlspecialchars($saisonBest->name) . '</p></td>';
+                $html .= '<td><p>' . htmlspecialchars($saisonBest->seasonName) . ' Bestzeit</p><p class="name">Von ' . htmlspecialchars($saisonBest->name) . '</p></td>';
                 $html .= '<td>' . htmlspecialchars($saisonBest->walkTime) . '</td>';
                 if ($checkpoint['userTime']) {
                     $html .= $this->_timeDiff($saisonBest->walkTime, $checkpoint['userTime'], 'td'); // differenz
@@ -812,6 +812,7 @@ class Uphill {
             $return = new \stdClass();
             $return->name = $row['name'];
             $return->walkTime = $row['walkTime'];
+            $return->seasonName = $row['seasonName'];
             return $return;
         }
 
